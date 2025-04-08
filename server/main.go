@@ -70,6 +70,7 @@ func main() {
 	})
 	r.POST("/register", func(c *gin.Context) {
 		var newUser User
+		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
 		if err := c.BindJSON(&newUser); err != nil {
 			c.JSON(500, "ERROR")
 		}
