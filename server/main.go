@@ -62,6 +62,52 @@ func main() {
 	r.GET("/quote", func(c *gin.Context) {
 		c.JSON(200, quote.Go())
 	})
+	r.OPTIONS("/register", func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
+		c.Header("Access-Control-Allow-Methods", "POST, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type")
+		c.JSON(200, nil)
+	})
+	r.POST("/register", func(c *gin.Context) {
+		var newUser User
+		if err := c.BindJSON(&newUser); err != nil {
+			c.JSON(500, "ERROR")
+		}
+		result := db.Create(&newUser)
+		c.JSON(200, result)
+	})
+	r.OPTIONS("/login", func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
+		c.Header("Access-Control-Allow-Methods", "POST, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type")
+		c.JSON(200, nil)
+	})
+	r.POST("/login", func(c *gin.Context) {
+		var user User
+		if err := c.BindJSON(&user); err != nil {
+			c.JSON(500, "ERROR")
+		}
+
+		var foundUser User
+		result := db.Where("email = ?", user.Email).First(&foundUser)
+		if result.Error != nil {
+			c.JSON(401, gin.H{"error": "Invalid credentials"})
+			return
+		}
+
+		if foundUser.Password != user.Password {
+			c.JSON(401, gin.H{"error": "Invalid credentials"})
+			return
+		}
+		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
+		c.JSON(200, gin.H{"user": foundUser})
+
+		// usuario por email
+		// comparar com o do request
+		// se errado faz o L (401)
+		// se der certo 200 usuario
+
+	})
 
 	r.Run(":3030")
 }
