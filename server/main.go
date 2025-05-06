@@ -75,7 +75,11 @@ func main() {
 			c.JSON(500, "ERROR")
 		}
 		result := db.Create(&newUser)
-		c.JSON(200, result)
+		if result.Error != nil {
+			c.JSON(500, gin.H{"error": "Failed to create user"})
+			return
+		}
+		c.JSON(200, gin.H{"user": newUser})
 	})
 	r.OPTIONS("/login", func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
@@ -103,11 +107,21 @@ func main() {
 		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
 		c.JSON(200, gin.H{"user": foundUser})
 
-		// usuario por email
-		// comparar com o do request
-		// se errado faz o L (401)
-		// se der certo 200 usuario
+		// quando logar, criar um hashmap autorizando o usuario
 
+	})
+	r.POST("/consulta", func(c *gin.Context) {
+		var newConsultation StudentConsultation
+		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
+		if err := c.BindJSON(&newConsultation); err != nil {
+			c.JSON(500, "ERROR")
+		}
+		result := db.Create(&newConsultation)
+		if result.Error != nil {
+			c.JSON(500, gin.H{"error": "Failed to create consultation"})
+			return
+		}
+		c.JSON(200, gin.H{"consultation": newConsultation})
 	})
 
 	r.Run(":3030")

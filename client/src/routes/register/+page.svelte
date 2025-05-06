@@ -28,7 +28,10 @@
 			const data = await response.json();
 			// Handle successful login
 			console.log('Login successful:', data);
-			dispatch('login', { firstName, lastName, email, password });
+			//dispatch('login', { firstName, lastName, email, password });
+			// Redirect to login page or show success message
+			window.location.href = '/login';
+			
 		} else {
 			const error = await response.json();
 			// Handle error
@@ -90,10 +93,11 @@
 			loading = true;
 
 			// Simulate API call
-			setTimeout(() => {
-				dispatch('signup', { firstName, lastName, email, password });
-				loading = false;
-			}, 1000);
+			//setTimeout(() => {
+			//	dispatch('signup', { firstName, lastName, email, password });
+			//	loading = false;
+			//}, 1000);
+			register();
 		}
 	}
 
