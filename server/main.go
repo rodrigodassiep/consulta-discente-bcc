@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"time"
 
@@ -31,6 +32,24 @@ type User struct {
 	UpdatedAt time.Time
 }
 
+// CORSMiddleware handles OPTIONS requests and sets CORS headers
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle OPTIONS requests
+		if c.Request.Method == "OPTIONS" {
+			log.Println("OPTIONS request received")
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
+}
+
 func main() {
 
 	err := godotenv.Load()
@@ -55,6 +74,9 @@ func main() {
 	//db.Create(&User{FirstName: "test", LastName: "test", Email: "test", Password: "test", Role: "test"})
 	r := gin.Default()
 
+	// Apply CORS middleware to all routes
+	r.Use(CORSMiddleware())
+
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, "hello world")
 	})
@@ -62,15 +84,9 @@ func main() {
 	r.GET("/quote", func(c *gin.Context) {
 		c.JSON(200, quote.Go())
 	})
-	r.OPTIONS("/register", func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
-		c.Header("Access-Control-Allow-Methods", "POST, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type")
-		c.JSON(200, nil)
-	})
+
 	r.POST("/register", func(c *gin.Context) {
 		var newUser User
-		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
 		if err := c.BindJSON(&newUser); err != nil {
 			c.JSON(500, "ERROR")
 		}
@@ -81,12 +97,7 @@ func main() {
 		}
 		c.JSON(200, gin.H{"user": newUser})
 	})
-	r.OPTIONS("/login", func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
-		c.Header("Access-Control-Allow-Methods", "POST, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type")
-		c.JSON(200, nil)
-	})
+
 	r.POST("/login", func(c *gin.Context) {
 		var user User
 		if err := c.BindJSON(&user); err != nil {
@@ -104,20 +115,19 @@ func main() {
 			c.JSON(401, gin.H{"error": "Invalid credentials"})
 			return
 		}
-		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
 		c.JSON(200, gin.H{"user": foundUser})
 
 		// quando logar, criar um hashmap autorizando o usuario
-
 	})
+
 	r.POST("/consulta", func(c *gin.Context) {
 		var newConsultation StudentConsultation
-		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
 		if err := c.BindJSON(&newConsultation); err != nil {
 			c.JSON(500, "ERROR")
 		}
 		result := db.Create(&newConsultation)
 		if result.Error != nil {
+			log.Println("Error creating consultation:", result.Error)
 			c.JSON(500, gin.H{"error": "Failed to create consultation"})
 			return
 		}
