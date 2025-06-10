@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -237,12 +238,59 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
 			return
 		}
+
+		// Validate required fields
+		if newUser.FirstName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "First name is required"})
+			return
+		}
+		if newUser.LastName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Last name is required"})
+			return
+		}
+		if newUser.Email == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Email is required"})
+			return
+		}
+		if newUser.Password == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Password is required"})
+			return
+		}
+
+		// Set default role if not provided
+		if newUser.Role == "" {
+			newUser.Role = RoleStudent
+		}
+
+		// Validate role
+		if newUser.Role != RoleStudent && newUser.Role != RoleProfessor && newUser.Role != RoleAdmin {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+			return
+		}
+
 		result := db.Create(&newUser)
 		if result.Error != nil {
+			// Check if it's a unique constraint violation (email already exists)
+			if strings.Contains(result.Error.Error(), "duplicate key") || strings.Contains(result.Error.Error(), "UNIQUE constraint") {
+				c.JSON(http.StatusConflict, gin.H{"error": "Email already exists"})
+				return
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 			return
 		}
-		c.JSON(http.StatusCreated, gin.H{"user": newUser})
+
+		// Create response user without password
+		responseUser := map[string]interface{}{
+			"id":         newUser.ID,
+			"first_name": newUser.FirstName,
+			"last_name":  newUser.LastName,
+			"email":      newUser.Email,
+			"role":       newUser.Role,
+			"created_at": newUser.CreatedAt,
+			"updated_at": newUser.UpdatedAt,
+		}
+
+		c.JSON(http.StatusCreated, responseUser)
 	})
 
 	r.POST("/login", func(c *gin.Context) {
@@ -263,7 +311,19 @@ func main() {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"user": foundUser})
+
+		// Create response user without password
+		responseUser := map[string]interface{}{
+			"id":         foundUser.ID,
+			"first_name": foundUser.FirstName,
+			"last_name":  foundUser.LastName,
+			"email":      foundUser.Email,
+			"role":       foundUser.Role,
+			"created_at": foundUser.CreatedAt,
+			"updated_at": foundUser.UpdatedAt,
+		}
+
+		c.JSON(http.StatusOK, responseUser)
 	})
 
 	// =============================================================================
