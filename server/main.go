@@ -675,6 +675,29 @@ func main() {
 
 			c.JSON(http.StatusOK, gin.H{"survey": survey})
 		})
+
+		// Get student's responses for a specific survey
+		studentGroup.GET("/surveys/:id/responses", func(c *gin.Context) {
+			currentUser, _ := c.Get("currentUser")
+			user := currentUser.(User)
+			surveyID := c.Param("id")
+
+			// Verify student has access to this survey
+			var survey Survey
+			if err := db.Joins("JOIN student_enrollments ON surveys.subject_id = student_enrollments.subject_id AND surveys.semester_id = student_enrollments.semester_id").
+				Where("student_enrollments.student_id = ? AND surveys.id = ?", user.ID, surveyID).
+				First(&survey).Error; err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Survey not found or access denied"})
+				return
+			}
+
+			var responses []Response
+			if err := db.Preload("Question").Where("survey_id = ? AND student_id = ?", surveyID, user.ID).Find(&responses).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch responses"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"responses": responses})
+		})
 	}
 
 	// Legacy endpoint - can be removed later
