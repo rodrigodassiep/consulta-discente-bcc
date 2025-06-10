@@ -136,7 +136,8 @@ func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-ID")
+		c.Header("Access-Control-Allow-Credentials", "true")
 
 		// Handle OPTIONS requests
 		if c.Request.Method == "OPTIONS" {
@@ -653,6 +654,26 @@ func main() {
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{"responses": responses})
+		})
+
+		// Get specific survey details with questions (for taking survey)
+		studentGroup.GET("/surveys/:id", func(c *gin.Context) {
+			currentUser, _ := c.Get("currentUser")
+			user := currentUser.(User)
+			surveyID := c.Param("id")
+
+			var survey Survey
+			if err := db.Preload("Subject").Preload("Semester").Preload("Questions", func(db *gorm.DB) *gorm.DB {
+				return db.Order("\"order\" ASC")
+			}).
+				Joins("JOIN student_enrollments ON surveys.subject_id = student_enrollments.subject_id AND surveys.semester_id = student_enrollments.semester_id").
+				Where("student_enrollments.student_id = ? AND surveys.id = ? AND surveys.is_active = ?", user.ID, surveyID, true).
+				First(&survey).Error; err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Survey not found or access denied"})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"survey": survey})
 		})
 	}
 
