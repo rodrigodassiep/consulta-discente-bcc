@@ -95,6 +95,10 @@ class ApiClient {
 		return this.request(`/student/surveys/${surveyId}`);
 	}
 
+	async getSurveyResponses(surveyId: string) {
+		return this.request(`/student/surveys/${surveyId}/responses`);
+	}
+
 	// Professor endpoints
 	async getProfessorSubjects() {
 		return this.request('/professor/subjects');
@@ -120,10 +124,6 @@ class ApiClient {
 
 	async getProfessorResponses() {
 		return this.request('/professor/responses');
-	}
-
-	async getSurveyResponses(surveyId: string) {
-		return this.request(`/professor/surveys/${surveyId}/responses`);
 	}
 
 	// Admin endpoints

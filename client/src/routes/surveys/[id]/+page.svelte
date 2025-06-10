@@ -14,6 +14,8 @@
 	let submitting = false;
 	let submitted = false;
 	let error = '';
+	let studentResponses: any[] = [];
+	let hasAnswered = false;
 
 	// Check if survey is active and within date range
 	function isSurveyActive() {
@@ -106,18 +108,36 @@
 		}
 
 		try {
-			const result = await api.getSurveyById(surveyId);
+			// Load survey details
+			const surveyResult = await api.getSurveyById(surveyId);
 			
-			if (!result.success) {
-				error = result.error || 'Pesquisa não encontrada';
+			if (!surveyResult.success) {
+				error = surveyResult.error || 'Pesquisa não encontrada';
 				loading = false;
 				return;
 			}
 
-			survey = (result.data as any)?.survey;
+			survey = (surveyResult.data as any)?.survey;
 			
 			if (!survey) {
 				error = 'Pesquisa não encontrada';
+				loading = false;
+				return;
+			}
+
+			// Check if student has already answered this survey
+			const responsesResult = await api.getSurveyResponses(surveyId);
+			
+			if (responsesResult.success) {
+				studentResponses = (responsesResult.data as any)?.responses || [];
+				hasAnswered = studentResponses.length > 0;
+
+				// If student has answered, populate the responses object for display
+				if (hasAnswered) {
+					studentResponses.forEach((response: any) => {
+						responses[response.question_id] = response.answer;
+					});
+				}
 			}
 		} catch (err) {
 			error = 'Erro ao carregar pesquisa';
@@ -154,7 +174,7 @@
 				</Button>
 			</div>
 		</Card>
-	{:else if submitted}
+	{:else if submitted || hasAnswered}
 		<Card class="border-green-200 bg-green-50">
 			<div class="text-center space-y-4">
 				<div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
@@ -162,13 +182,86 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
 					</svg>
 				</div>
-				<h2 class="text-2xl font-bold text-green-800">Respostas Enviadas!</h2>
-				<p class="text-green-700">Obrigado por participar da pesquisa sobre {survey.subject.name}.</p>
-				<Button onclick={() => goto('/dashboard/student')} class="mt-4">
+				<h2 class="text-2xl font-bold text-green-800">
+					{submitted ? 'Respostas Enviadas!' : 'Pesquisa Já Respondida'}
+				</h2>
+				<p class="text-green-700">
+					{submitted 
+						? `Obrigado por participar da pesquisa sobre ${survey.subject.name}.`
+						: `Você já respondeu esta pesquisa sobre ${survey.subject.name}.`
+					}
+				</p>
+				<Button onclick={() => goto('/dashboard/student')}>
 					Voltar ao Dashboard
 				</Button>
 			</div>
 		</Card>
+
+		<!-- Show answered questions if already responded -->
+		{#if hasAnswered && !submitted}
+			<div class="space-y-6">
+				<Card>
+					<h3 class="text-lg font-semibold text-gray-900 mb-4">Suas Respostas:</h3>
+				</Card>
+
+				{#each survey.questions as question, index}
+					<Card>
+						<div class="space-y-4">
+							<!-- Question Header -->
+							<div class="flex items-start justify-between">
+								<div class="flex-1">
+									<h3 class="text-lg font-medium text-gray-900">
+										{index + 1}. {question.text}
+									</h3>
+								</div>
+								<Badge variant="secondary" class="text-xs">
+									{question.type === 'nps' ? 'NPS' : 
+									 question.type === 'free_text' ? 'Texto Livre' :
+									 question.type === 'rating' ? 'Avaliação' : 'Múltipla Escolha'}
+								</Badge>
+							</div>
+
+							<!-- Display Answer -->
+							<div class="bg-gray-50 rounded-lg p-4">
+								{#if question.type === 'free_text'}
+									<p class="text-gray-800">{responses[question.id] || 'Não respondido'}</p>
+
+								{:else if question.type === 'nps'}
+									<div class="flex items-center space-x-3">
+										<span class="font-medium text-gray-700">Nota:</span>
+										<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+											{responses[question.id] || 'N/A'}/10
+										</span>
+									</div>
+
+								{:else if question.type === 'rating'}
+									<div class="flex items-center space-x-3">
+										<span class="font-medium text-gray-700">Avaliação:</span>
+										<div class="flex gap-1">
+											{#each Array(5) as _, i}
+												<svg class="w-5 h-5 {parseInt(responses[question.id]) > i ? 'text-yellow-400' : 'text-gray-300'}" 
+													 fill="currentColor" viewBox="0 0 20 20">
+													<path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+												</svg>
+											{/each}
+										</div>
+										<span class="text-sm text-gray-600">({responses[question.id] || 0}/5)</span>
+									</div>
+
+								{:else if question.type === 'multiple_choice'}
+									<div class="flex items-center space-x-3">
+										<span class="font-medium text-gray-700">Resposta:</span>
+										<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+											{responses[question.id] || 'Não respondido'}
+										</span>
+									</div>
+								{/if}
+							</div>
+						</div>
+					</Card>
+				{/each}
+			</div>
+		{/if}
 	{:else if !isSurveyActive()}
 		<Card class="border-yellow-200 bg-yellow-50">
 			<div class="text-center">
@@ -182,7 +275,7 @@
 				</Button>
 			</div>
 		</Card>
-	{:else}
+	{:else if !hasAnswered}
 		<div class="space-y-6">
 			<!-- Survey Header -->
 			<Card>
