@@ -10,6 +10,14 @@ import (
 func seedDatabase(db *gorm.DB) {
 	log.Println("🌱 Starting database seeding...")
 
+	// Check if we already have data - if so, skip seeding
+	var userCount int64
+	db.Model(&User{}).Count(&userCount)
+	if userCount > 0 {
+		log.Println("📋 Database already has data, skipping seeding...")
+		return
+	}
+
 	// Clear existing data (optional - comment out if you want to keep existing data)
 	log.Println("🧹 Clearing existing data...")
 	db.Exec("DELETE FROM responses")
@@ -147,6 +155,20 @@ func seedDatabase(db *gorm.DB) {
 	db.Where("role = ?", RoleStudent).Find(&createdStudents)
 	db.Where("is_active = ?", true).First(&currentSemester)
 
+	// Check if we have the required data
+	if len(createdProfessors) == 0 {
+		log.Println("❌ No professors found, cannot create subjects")
+		return
+	}
+	if len(createdStudents) == 0 {
+		log.Println("❌ No students found, cannot create enrollments")
+		return
+	}
+	if currentSemester.ID == 0 {
+		log.Println("❌ No active semester found, cannot create subjects/enrollments")
+		return
+	}
+
 	// Create subjects
 	log.Println("📚 Creating subjects...")
 	subjects := []Subject{
@@ -195,6 +217,11 @@ func seedDatabase(db *gorm.DB) {
 	// Get created subjects
 	var createdSubjects []Subject
 	db.Find(&createdSubjects)
+
+	if len(createdSubjects) == 0 {
+		log.Println("❌ No subjects found, cannot create enrollments")
+		return
+	}
 
 	// Create student enrollments
 	log.Println("📝 Creating student enrollments...")

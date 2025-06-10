@@ -215,7 +215,25 @@ func main() {
 	}
 
 	// Auto-migrate all the new models
-	db.AutoMigrate(&User{}, &Subject{}, &Semester{}, &StudentEnrollment{}, &Survey{}, &Question{}, &Response{})
+	log.Println("🔧 Running database migrations...")
+	err = db.AutoMigrate(&User{}, &Subject{}, &Semester{}, &StudentEnrollment{}, &Survey{}, &Question{}, &Response{})
+	if err != nil {
+		log.Printf("⚠️  Migration error: %v", err)
+		log.Println("🔄 Attempting to reset database...")
+
+		// Drop all tables and recreate them
+		db.Migrator().DropTable(&Response{}, &Question{}, &Survey{}, &StudentEnrollment{}, &Subject{}, &Semester{}, &User{})
+
+		// Retry migration
+		err = db.AutoMigrate(&User{}, &Subject{}, &Semester{}, &StudentEnrollment{}, &Survey{}, &Question{}, &Response{})
+		if err != nil {
+			log.Fatal("Failed to migrate database after reset: ", err)
+		}
+		log.Println("✅ Database reset and migrated successfully")
+	}
+
+	// Seed database with sample data (comment out after first run if you want to keep data)
+	seedDatabase(db)
 
 	r := gin.Default()
 
