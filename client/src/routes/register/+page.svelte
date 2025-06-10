@@ -23,12 +23,12 @@
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({ 
-					first_name: firstName, 
-					last_name: lastName, 
-					email, 
+				body: JSON.stringify({
+					first_name: firstName,
+					last_name: lastName,
+					email,
 					password,
-					role: 'student'  // Default role
+					role: 'student' // Default role
 				})
 			});
 
@@ -40,7 +40,7 @@
 			} else {
 				const error = await response.json();
 				console.error('Registration failed:', error);
-				
+
 				// Handle specific errors
 				if (response.status === 409) {
 					emailError = 'Este email já está cadastrado';
@@ -144,7 +144,7 @@
 				Ou
 				<a class="text-primary hover:text-primary-focus font-medium" href="/login">
 					faça login na sua conta
-        </a>
+				</a>
 			</p>
 		</div>
 

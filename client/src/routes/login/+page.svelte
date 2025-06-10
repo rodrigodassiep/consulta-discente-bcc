@@ -34,18 +34,18 @@
 				const data = await response.json();
 				// Handle successful login
 				const user = data;
-				
+
 				// Store user data and ID in localStorage
 				localStorage.setItem('user', JSON.stringify(user));
 				localStorage.setItem('userId', user.id.toString());
-				
+
 				// Redirect based on user role
 				const roleRedirects = {
 					student: '/dashboard/student',
 					professor: '/dashboard/professor',
 					admin: '/dashboard/admin'
 				};
-				
+
 				const redirectPath = roleRedirects[user.role as keyof typeof roleRedirects] || '/';
 				window.location.href = redirectPath;
 			} else {
@@ -58,7 +58,7 @@
 				}
 			}
 		} catch (error) {
-      	console.log(error);
+			console.log(error);
 			emailError = 'Email ou senha inválidos';
 			console.error('Error during login:', emailError);
 		} finally {
