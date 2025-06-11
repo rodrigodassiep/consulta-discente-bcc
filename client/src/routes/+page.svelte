@@ -1,59 +1,50 @@
 <script lang="ts">
-	import Counter from './Counter.svelte';
-	import welcome from '$lib/images/svelte-welcome.webp';
-	import welcomeFallback from '$lib/images/svelte-welcome.png';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
+
+
+	onMount(() => {
+		if (browser) {
+			// Check if user is logged in
+			const userData = localStorage.getItem('user');
+			if (userData) {
+				try {
+					const user = JSON.parse(userData);
+					// Redirect to appropriate dashboard
+					const roleRedirects = {
+						student: '/dashboard/student',
+						professor: '/dashboard/professor',
+						admin: '/dashboard/admin'
+					};
+					
+					const redirectPath = roleRedirects[user.role as keyof typeof roleRedirects];
+					if (redirectPath) {
+						window.location.href = redirectPath;
+						return;
+					}
+				} catch (e) {
+					// Invalid user data, clear it
+					localStorage.removeItem('user');
+					localStorage.removeItem('userId');
+				}
+			}
+			
+			// User not logged in, redirect to login
+			window.location.href = '/login';
+		}
+	});
 </script>
 
 <svelte:head>
-	<title>Home</title>
-	<meta name="description" content="Svelte demo app" />
+	<title>Sistema de Consulta Discente</title>
+	<meta name="description" content="Sistema de feedback para estudantes" />
 </svelte:head>
 
-<section>
-	<h1>
-		<span class="welcome">
-			<picture>
-				<source srcset={welcome} type="image/webp" />
-				<img src={welcomeFallback} alt="Welcome" />
-			</picture>
-		</span>
+<div class="flex min-h-screen items-center justify-center bg-gray-50">
+	<div class="text-center">
+		<div class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
+		<p class="mt-4 text-gray-600">Redirecionando...</p>
+	</div>
+</div>
 
-		to your new<br />SvelteKit app
-	</h1>
 
-	<h2>
-		try editing <strong>src/routes/+page.svelte</strong>
-	</h2>
-
-	<Counter />
-</section>
-
-<style>
-	section {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-		flex: 0.6;
-	}
-
-	h1 {
-		width: 100%;
-	}
-
-	.welcome {
-		display: block;
-		position: relative;
-		width: 100%;
-		height: 0;
-		padding: 0 0 calc(100% * 495 / 2048) 0;
-	}
-
-	.welcome img {
-		position: absolute;
-		width: 100%;
-		height: 100%;
-		top: 0;
-		display: block;
-	}
-</style>

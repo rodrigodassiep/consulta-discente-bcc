@@ -1,5 +1,6 @@
-<script>
+<script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { onMount } from 'svelte';
 
 	const dispatch = createEventDispatcher();
 
@@ -8,6 +9,17 @@
 	let loading = false;
 	let emailError = '';
 	let passwordError = '';
+	let successMessage = '';
+
+	onMount(() => {
+		// Check if user was redirected from registration
+		const urlParams = new URLSearchParams(window.location.search);
+		if (urlParams.get('registered') === 'true') {
+			successMessage = 'Conta criada com sucesso! Faça login para continuar.';
+			// Clean up URL
+			window.history.replaceState({}, document.title, window.location.pathname);
+		}
+	});
 
 	async function login() {
 		try {
@@ -21,10 +33,21 @@
 			if (response.ok) {
 				const data = await response.json();
 				// Handle successful login
+				const user = data;
 
-				//dispatch('login', { email, password });
-				// Redirect to dashboard or show success message
-				window.location.href = '/';
+				// Store user data and ID in localStorage
+				localStorage.setItem('user', JSON.stringify(user));
+				localStorage.setItem('userId', user.id.toString());
+
+				// Redirect based on user role
+				const roleRedirects = {
+					student: '/dashboard/student',
+					professor: '/dashboard/professor',
+					admin: '/dashboard/admin'
+				};
+
+				const redirectPath = roleRedirects[user.role as keyof typeof roleRedirects] || '/';
+				window.location.href = redirectPath;
 			} else {
 				const error = await response.json();
 				// Handle error
@@ -35,7 +58,7 @@
 				}
 			}
 		} catch (error) {
-      console.log(error);
+			console.log(error);
 			emailError = 'Email ou senha inválidos';
 			console.error('Error during login:', emailError);
 		} finally {
@@ -43,7 +66,7 @@
 		}
 	}
 
-	function validateEmail(email) {
+	function validateEmail(email: string) {
 		const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 		return re.test(email);
 	}
@@ -102,7 +125,12 @@
 				</a>
 			</p>
 		</div>
-		const
+		{#if successMessage}
+			<div class="rounded-md bg-green-50 p-4">
+				<p class="text-sm text-green-800">{successMessage}</p>
+			</div>
+		{/if}
+
 		<form class="mt-8 space-y-6" on:submit|preventDefault={handleSubmit}>
 			<div class="-space-y-px rounded-md">
 				<div class="mb-4">

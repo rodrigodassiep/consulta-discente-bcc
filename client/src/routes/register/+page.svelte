@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
@@ -17,29 +17,59 @@
 	let confirmPasswordError = '';
 
 	async function register() {
-		const response = await fetch('http://localhost:3030/register', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ firstName, lastName, email, password })
-		});
-		if (response.ok) {
-			const data = await response.json();
-			// Handle successful login
-			console.log('Login successful:', data);
-			//dispatch('login', { firstName, lastName, email, password });
-			// Redirect to login page or show success message
-			window.location.href = '/login';
-			
-		} else {
-			const error = await response.json();
-			// Handle error
-			console.error('Login failed:', error);
+		try {
+			const response = await fetch('http://localhost:3030/register', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					first_name: firstName,
+					last_name: lastName,
+					email,
+					password,
+					role: 'student' // Default role
+				})
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				console.log('Registration successful:', data);
+				// Redirect to login page with success message
+				window.location.href = '/login?registered=true';
+			} else {
+				const error = await response.json();
+				console.error('Registration failed:', error);
+
+				// Handle specific errors
+				if (response.status === 409) {
+					emailError = 'Este email já está cadastrado';
+				} else if (error.error) {
+					// Show the specific error message from backend
+					if (error.error.includes('First name')) {
+						firstNameError = error.error;
+					} else if (error.error.includes('Last name')) {
+						lastNameError = error.error;
+					} else if (error.error.includes('Email')) {
+						emailError = error.error;
+					} else if (error.error.includes('Password')) {
+						passwordError = error.error;
+					} else {
+						emailError = error.error; // Default to email field
+					}
+				} else {
+					emailError = 'Erro ao criar conta. Tente novamente.';
+				}
+			}
+		} catch (error) {
+			console.error('Network error:', error);
+			emailError = 'Erro de conexão. Tente novamente.';
+		} finally {
+			loading = false;
 		}
 	}
 
-	function validateEmail(email) {
+	function validateEmail(email: string) {
 		const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 		return re.test(email);
 	}
@@ -114,7 +144,7 @@
 				Ou
 				<a class="text-primary hover:text-primary-focus font-medium" href="/login">
 					faça login na sua conta
-        </a>
+				</a>
 			</p>
 		</div>
 
