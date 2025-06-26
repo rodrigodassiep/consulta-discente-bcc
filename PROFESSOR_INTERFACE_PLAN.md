@@ -48,7 +48,7 @@ As a professor, I want to:
 ---
 
 ### **Step 2: Survey Creation Form**
-*Status: Not Started*
+*Status: ✅ COMPLETED*
 *Estimated Time: 2-3 days*
 *Priority: HIGH - Core Functionality*
 
@@ -298,3 +298,13 @@ Each step is complete when:
 *Last Updated: Current Date*
 *Version: 1.0*
 *Next: Begin Step 1 - Professor Dashboard Foundation* 
+
+interface SurveyForm {
+  title: string;           // Required, max 200 chars
+  description?: string;    // Optional, max 1000 chars  
+  subject_id: number;      // Pre-selected from clicked subject
+  semester_id: number;     // Current active semester
+  open_date: Date;         // When survey opens
+  close_date: Date;        // When survey closes
+  is_active: boolean;      // Active immediately or draft
+} 
