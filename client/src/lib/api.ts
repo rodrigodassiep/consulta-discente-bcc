@@ -128,6 +128,10 @@ class ApiClient {
 		return this.request('/professor/responses');
 	}
 
+	async getProfessorSurveyResponses(surveyId: string) {
+		return this.request(`/professor/surveys/${surveyId}/responses`);
+	}
+
 	// Admin endpoints
 	async createSemester(semester: any) {
 		return this.request('/admin/semesters', {
