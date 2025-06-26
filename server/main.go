@@ -250,6 +250,16 @@ func main() {
 		c.JSON(200, quote.Go())
 	})
 
+	// Get current active semester (public endpoint)
+	r.GET("/current-semester", func(c *gin.Context) {
+		var semester Semester
+		if err := db.Where("is_active = ?", true).First(&semester).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "No active semester found"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"semester": semester})
+	})
+
 	// Authentication endpoints
 	r.POST("/register", func(c *gin.Context) {
 		var newUser User

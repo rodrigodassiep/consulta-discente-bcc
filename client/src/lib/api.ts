@@ -9,7 +9,7 @@ interface ApiResponse<T> {
 class ApiClient {
 	private getHeaders(): HeadersInit {
 		const headers: HeadersInit = {
-			'Content-Type': 'application/json',
+			'Content-Type': 'application/json'
 		};
 
 		// Add user ID header if available
@@ -21,18 +21,15 @@ class ApiClient {
 		return headers;
 	}
 
-	private async request<T>(
-		endpoint: string,
-		options: RequestInit = {}
-	): Promise<ApiResponse<T>> {
+	private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
 		try {
 			console.log(`${API_BASE_URL}${endpoint}`);
 			const response = await fetch(`${API_BASE_URL}${endpoint}`, {
 				...options,
 				headers: {
 					...this.getHeaders(),
-					...options.headers,
-				},
+					...options.headers
+				}
 			});
 
 			const data = await response.json();
@@ -40,18 +37,18 @@ class ApiClient {
 			if (!response.ok) {
 				return {
 					success: false,
-					error: data.error || `HTTP error! status: ${response.status}`,
+					error: data.error || `HTTP error! status: ${response.status}`
 				};
 			}
 
 			return {
 				success: true,
-				data,
+				data
 			};
 		} catch (error) {
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Network error',
+				error: error instanceof Error ? error.message : 'Network error'
 			};
 		}
 	}
@@ -60,14 +57,14 @@ class ApiClient {
 	async login(email: string, password: string) {
 		return this.request('/login', {
 			method: 'POST',
-			body: JSON.stringify({ email, password }),
+			body: JSON.stringify({ email, password })
 		});
 	}
 
 	async register(userData: any) {
 		return this.request('/register', {
 			method: 'POST',
-			body: JSON.stringify(userData),
+			body: JSON.stringify(userData)
 		});
 	}
 
@@ -83,7 +80,7 @@ class ApiClient {
 	async submitResponse(response: any) {
 		return this.request('/student/responses', {
 			method: 'POST',
-			body: JSON.stringify(response),
+			body: JSON.stringify(response)
 		});
 	}
 
@@ -99,6 +96,11 @@ class ApiClient {
 		return this.request(`/student/surveys/${surveyId}/responses`);
 	}
 
+	// Public endpoints
+	async getCurrentSemester() {
+		return this.request('/current-semester');
+	}
+
 	// Professor endpoints
 	async getProfessorSubjects() {
 		return this.request('/professor/subjects');
@@ -111,14 +113,14 @@ class ApiClient {
 	async createSurvey(survey: any) {
 		return this.request('/professor/surveys', {
 			method: 'POST',
-			body: JSON.stringify(survey),
+			body: JSON.stringify(survey)
 		});
 	}
 
 	async addQuestionToSurvey(surveyId: string, question: any) {
 		return this.request(`/professor/surveys/${surveyId}/questions`, {
 			method: 'POST',
-			body: JSON.stringify(question),
+			body: JSON.stringify(question)
 		});
 	}
 
@@ -130,7 +132,7 @@ class ApiClient {
 	async createSemester(semester: any) {
 		return this.request('/admin/semesters', {
 			method: 'POST',
-			body: JSON.stringify(semester),
+			body: JSON.stringify(semester)
 		});
 	}
 
@@ -140,14 +142,14 @@ class ApiClient {
 
 	async activateSemester(semesterId: string) {
 		return this.request(`/admin/semesters/${semesterId}/activate`, {
-			method: 'PUT',
+			method: 'PUT'
 		});
 	}
 
 	async createSubject(subject: any) {
 		return this.request('/admin/subjects', {
 			method: 'POST',
-			body: JSON.stringify(subject),
+			body: JSON.stringify(subject)
 		});
 	}
 
@@ -158,7 +160,7 @@ class ApiClient {
 	async createEnrollment(enrollment: any) {
 		return this.request('/admin/enrollments', {
 			method: 'POST',
-			body: JSON.stringify(enrollment),
+			body: JSON.stringify(enrollment)
 		});
 	}
 
@@ -176,4 +178,4 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
-export type { ApiResponse }; 
+export type { ApiResponse };
