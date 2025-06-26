@@ -1,1 +1,9 @@
 .env
+
+# Test coverage files
+coverage.out
+coverage.html
+*.prof
+
+# Test result files
+test_results/
