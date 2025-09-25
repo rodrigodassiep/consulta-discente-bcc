@@ -24,6 +24,7 @@
 				// Invalid user data, clear and redirect
 				localStorage.removeItem('user');
 				localStorage.removeItem('userId');
+				localStorage.removeItem('token');
 				window.location.href = '/login';
 			}
 		}

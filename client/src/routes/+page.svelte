@@ -26,6 +26,7 @@
 					// Invalid user data, clear it
 					localStorage.removeItem('user');
 					localStorage.removeItem('userId');
+					localStorage.removeItem('token');
 				}
 			}
 			

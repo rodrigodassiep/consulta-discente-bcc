@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"rsc.io/quote"
@@ -29,6 +31,62 @@ const (
 	QuestionTypeRating   = "rating"
 	QuestionTypeChoice   = "multiple_choice"
 )
+
+// JWT Claims structure
+type Claims struct {
+	UserID uint   `json:"user_id"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
+}
+
+// Password hashing utilities
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+// JWT token utilities
+func GenerateJWT(userID uint, role string) (string, error) {
+	expirationTime := time.Now().Add(24 * time.Hour)
+	claims := &Claims{
+		UserID: userID,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "fallback_secret_key_change_in_production"
+	}
+	return token.SignedString([]byte(jwtSecret))
+}
+
+func ValidateJWT(tokenString string) (*Claims, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "fallback_secret_key_change_in_production"
+	}
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(jwtSecret), nil
+	})
+
+	if err != nil || !token.Valid {
+		return nil, err
+	}
+
+	return claims, nil
+}
 
 // User model with proper role handling
 type User struct {
@@ -136,7 +194,7 @@ func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-ID")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		c.Header("Access-Control-Allow-Credentials", "true")
 
 		// Handle OPTIONS requests
@@ -150,26 +208,28 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
-// Simple role-based middleware
+// JWT-based role middleware
 func RequireRole(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := c.GetHeader("X-User-ID")
-		if userID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID header required"})
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
 			c.Abort()
 			return
 		}
 
-		id, err := strconv.Atoi(userID)
+		// Extract token from "Bearer <token>" format
+		tokenParts := strings.Split(authHeader, " ")
+		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
+			c.Abort()
+			return
+		}
+
+		tokenString := tokenParts[1]
+		claims, err := ValidateJWT(tokenString)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-			c.Abort()
-			return
-		}
-
-		var user User
-		if err := db.First(&user, id).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 			c.Abort()
 			return
 		}
@@ -177,7 +237,7 @@ func RequireRole(allowedRoles ...string) gin.HandlerFunc {
 		// Check if user role is allowed
 		allowed := false
 		for _, role := range allowedRoles {
-			if user.Role == role {
+			if claims.Role == role {
 				allowed = true
 				break
 			}
@@ -189,8 +249,17 @@ func RequireRole(allowedRoles ...string) gin.HandlerFunc {
 			return
 		}
 
-		// Store user in context for later use
+		// Store user data in context for later use
+		var user User
+		if err := db.First(&user, claims.UserID).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			c.Abort()
+			return
+		}
+
 		c.Set("currentUser", user)
+		c.Set("userID", claims.UserID)
+		c.Set("userRole", claims.Role)
 		c.Next()
 	}
 }
@@ -234,7 +303,7 @@ func main() {
 	}
 
 	// Seed database with sample data (comment out after first run if you want to keep data)
-	seedDatabase(db)
+	// seedDatabase(db)
 
 	r := gin.Default()
 
@@ -297,6 +366,14 @@ func main() {
 			return
 		}
 
+		// Hash the password before storing
+		hashedPassword, err := HashPassword(newUser.Password)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process password"})
+			return
+		}
+		newUser.Password = hashedPassword
+
 		result := db.Create(&newUser)
 		if result.Error != nil {
 			// Check if it's a unique constraint violation (email already exists)
@@ -336,23 +413,34 @@ func main() {
 			return
 		}
 
-		if foundUser.Password != user.Password {
+		// Verify password using bcrypt
+		if !CheckPasswordHash(user.Password, foundUser.Password) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 			return
 		}
 
-		// Create response user without password
-		responseUser := map[string]interface{}{
-			"id":         foundUser.ID,
-			"first_name": foundUser.FirstName,
-			"last_name":  foundUser.LastName,
-			"email":      foundUser.Email,
-			"role":       foundUser.Role,
-			"created_at": foundUser.CreatedAt,
-			"updated_at": foundUser.UpdatedAt,
+		// Generate JWT token
+		token, err := GenerateJWT(foundUser.ID, foundUser.Role)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+			return
 		}
 
-		c.JSON(http.StatusOK, responseUser)
+		// Create response with user data and token
+		response := map[string]interface{}{
+			"token": token,
+			"user": map[string]interface{}{
+				"id":         foundUser.ID,
+				"first_name": foundUser.FirstName,
+				"last_name":  foundUser.LastName,
+				"email":      foundUser.Email,
+				"role":       foundUser.Role,
+				"created_at": foundUser.CreatedAt,
+				"updated_at": foundUser.UpdatedAt,
+			},
+		}
+
+		c.JSON(http.StatusOK, response)
 	})
 
 	// =============================================================================

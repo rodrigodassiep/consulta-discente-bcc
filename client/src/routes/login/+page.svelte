@@ -30,12 +30,29 @@
 				},
 				body: JSON.stringify({ email, password })
 			});
-			if (response.ok) {
-				const data = await response.json();
-				// Handle successful login
-				const user = data;
 
-				// Store user data and ID in localStorage
+			const data = await response.json();
+			console.log('Login response:', response.status, data); // Debug log
+
+			if (response.ok) {
+				// Handle successful login
+				let token, user;
+
+				// Check if response has new JWT format or old format
+				if (data.token && data.user) {
+					// New JWT format
+					token = data.token;
+					user = data.user;
+				} else {
+					// Old format fallback (shouldn't happen with new implementation)
+					console.warn('Received old login response format');
+					user = data;
+				}
+
+				// Store token and user data in localStorage
+				if (token) {
+					localStorage.setItem('token', token);
+				}
 				localStorage.setItem('user', JSON.stringify(user));
 				localStorage.setItem('userId', user.id.toString());
 
@@ -49,18 +66,17 @@
 				const redirectPath = roleRedirects[user.role as keyof typeof roleRedirects] || '/';
 				window.location.href = redirectPath;
 			} else {
-				const error = await response.json();
-				// Handle error
+				// Handle error response
+				console.error('Login failed:', response.status, data);
 				if (response.status === 401) {
 					emailError = 'Email ou senha inválidos';
 				} else {
-					console.error('Login failed:', error);
+					emailError = data.error || 'Erro no servidor. Tente novamente.';
 				}
 			}
 		} catch (error) {
-			console.log(error);
-			emailError = 'Email ou senha inválidos';
-			console.error('Error during login:', emailError);
+			console.error('Network error during login:', error);
+			emailError = 'Erro de conexão. Verifique sua internet.';
 		} finally {
 			loading = false;
 		}
