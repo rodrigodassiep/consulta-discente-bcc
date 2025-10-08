@@ -12,10 +12,10 @@ class ApiClient {
 			'Content-Type': 'application/json'
 		};
 
-		// Add user ID header if available
-		const userId = localStorage.getItem('userId');
-		if (userId) {
-			headers['X-User-ID'] = userId;
+		// Add JWT token if available
+		const token = localStorage.getItem('token');
+		if (token) {
+			headers['Authorization'] = `Bearer ${token}`;
 		}
 
 		return headers;
