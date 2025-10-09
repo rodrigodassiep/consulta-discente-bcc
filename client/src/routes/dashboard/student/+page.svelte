@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Layout from '$lib/components/Layout.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -88,7 +87,15 @@
 	}
 </script>
 
-<Layout title="Dashboard do Estudante">
+<svelte:head>
+	<title>Dashboard do Estudante - Sistema de Consulta Discente</title>
+</svelte:head>
+
+<div class="space-y-8">
+	<div>
+		<h2 class="text-3xl font-bold text-gray-900">Dashboard do Estudante</h2>
+	</div>
+
 	{#if loading}
 		<div class="flex items-center justify-center py-12">
 			<div class="text-center">
@@ -239,4 +246,4 @@
 			</section>
 		</div>
 	{/if}
-</Layout> 
+</div> 

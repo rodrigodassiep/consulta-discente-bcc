@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { logout } from '$lib/auth';
 	import Button from './ui/Button.svelte';
 
 	interface Props {
@@ -20,13 +21,6 @@
 		}
 		loading = false;
 	});
-
-	function logout() {
-		localStorage.removeItem('user');
-		localStorage.removeItem('userId');
-		localStorage.removeItem('token');
-		window.location.href = '/login';
-	}
 
 	function getRoleDisplayName(role: string) {
 		const roleMap: Record<string, string> = {

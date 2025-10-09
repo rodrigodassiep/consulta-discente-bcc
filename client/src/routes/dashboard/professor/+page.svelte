@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import Layout from '$lib/components/Layout.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -67,8 +66,11 @@
 	// We'll show current semester info separately since subjects don't include semester data
 </script>
 
-<Layout title="Dashboard do Professor">
-	<div class="space-y-6">
+<svelte:head>
+	<title>Dashboard do Professor - Sistema de Consulta Discente</title>
+</svelte:head>
+
+<div class="space-y-6">
 		<!-- Header -->
 		<div class="flex items-center justify-between">
 			<div>
@@ -383,4 +385,4 @@
 			</Card>
 		{/if}
 	</div>
-</Layout>
+</div>
