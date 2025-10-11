@@ -20,19 +20,19 @@
 		...restProps
 	}: Props = $props();
 
-	const baseClasses = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none';
-	
+	const baseClasses = 'inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none shadow-sm hover:shadow-md';
+
 	const variantClasses = {
-		primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-		secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500',
-		outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500',
-		ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500'
+		primary: 'bg-gradient-to-br from-blue-700 to-blue-800 text-white hover:from-blue-800 hover:to-blue-900 focus:ring-blue-500 border border-blue-800',
+		secondary: 'bg-gradient-to-br from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 focus:ring-amber-500 border border-amber-600',
+		outline: 'border-2 border-blue-700 bg-white text-blue-700 hover:bg-blue-50 focus:ring-blue-500',
+		ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-400 shadow-none hover:shadow-none'
 	};
 
 	const sizeClasses = {
 		sm: 'px-3 py-1.5 text-sm',
-		md: 'px-4 py-2 text-sm',
-		lg: 'px-6 py-3 text-base'
+		md: 'px-5 py-2.5 text-sm',
+		lg: 'px-8 py-3.5 text-base'
 	};
 
 	const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`;

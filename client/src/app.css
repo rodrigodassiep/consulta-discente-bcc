@@ -1,60 +1,102 @@
 @import 'tailwindcss';
 @import '@fontsource/fira-mono';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 :root {
-	--font-body:
-		Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
-		'Open Sans', 'Helvetica Neue', sans-serif;
+	/* Typography */
+	--font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	--font-display: 'Space Grotesk', 'Inter', sans-serif;
 	--font-mono: 'Fira Mono', monospace;
+
+	/* Academic Color Palette - USP Inspired */
+	--color-primary: #1e40af; /* Deep Academic Blue */
+	--color-primary-light: #3b82f6;
+	--color-primary-dark: #1e3a8a;
+	--color-accent: #f59e0b; /* Academic Gold/Amber */
+	--color-accent-light: #fbbf24;
+
+	/* Semantic Colors */
+	--color-success: #10b981;
+	--color-warning: #f59e0b;
+	--color-error: #ef4444;
+	--color-info: #3b82f6;
+
+	/* Neutrals */
+	--color-text: #1f2937;
+	--color-text-light: #6b7280;
+	--color-text-lighter: #9ca3af;
+	--color-border: #e5e7eb;
+	--color-bg: #ffffff;
+	--color-bg-subtle: #f9fafb;
+
+	/* Legacy */
 	--color-bg-0: rgb(202, 216, 228);
 	--color-bg-1: hsl(209, 36%, 86%);
 	--color-bg-2: hsl(224, 44%, 95%);
-	--color-theme-1: #ff3e00;
-	--color-theme-2: #4075a6;
-	--color-text: rgba(0, 0, 0, 0.7);
+	--color-theme-1: var(--color-primary);
+	--color-theme-2: var(--color-accent);
+
 	--column-width: 42rem;
 	--column-margin-top: 4rem;
+
 	font-family: var(--font-body);
 	color: var(--color-text);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 body {
-	/* min-height: 100vh; */
 	margin: 0;
-	/* background-attachment: fixed;
-	background-color: var(--color-bg-1);
-	background-size: 100vw 100vh;
-	background-image:
-		radial-gradient(50% 50% at 50% 50%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 100%),
-		linear-gradient(180deg, var(--color-bg-0) 0%, var(--color-bg-1) 15%, var(--color-bg-2) 50%); */
+	background-color: var(--color-bg);
+	letter-spacing: -0.011em;
 }
 
-h1,
-h2,
-p {
-	font-weight: 400;
-}
-
-p {
-	line-height: 1.5;
-}
-
-a {
-	color: var(--color-theme-1);
-	text-decoration: none;
-}
-
-a:hover {
-	text-decoration: underline;
+/* Typography Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+	font-family: var(--font-display);
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: -0.025em;
+	color: var(--color-text);
 }
 
 h1 {
-	font-size: 2rem;
-	text-align: center;
+	font-size: 2.5rem;
+	font-weight: 800;
 }
 
 h2 {
-	font-size: 1rem;
+	font-size: 2rem;
+	font-weight: 700;
+}
+
+h3 {
+	font-size: 1.5rem;
+	font-weight: 600;
+}
+
+p {
+	line-height: 1.7;
+	color: var(--color-text-light);
+}
+
+a {
+	color: var(--color-primary);
+	text-decoration: none;
+	transition: color 0.2s ease;
+}
+
+a:hover {
+	color: var(--color-primary-dark);
+}
+
+@media (min-width: 720px) {
+	h1 {
+		font-size: 3rem;
+	}
+	h2 {
+		font-size: 2.25rem;
+	}
 }
 
 pre {

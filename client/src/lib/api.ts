@@ -1,3 +1,5 @@
+import { logout } from './auth';
+
 const API_BASE_URL = 'http://localhost:3030';
 
 interface ApiResponse<T> {
@@ -21,6 +23,22 @@ class ApiClient {
 		return headers;
 	}
 
+	private isTokenExpiredError(error: string): boolean {
+		const tokenErrorPatterns = [
+			'invalid token',
+			'expired token',
+			'token expired',
+			'invalid or expired token',
+			'unauthorized',
+			'invalid authorization',
+			'jwt expired',
+			'jwt malformed'
+		];
+
+		const errorLower = error.toLowerCase();
+		return tokenErrorPatterns.some((pattern) => errorLower.includes(pattern));
+	}
+
 	private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
 		try {
 			console.log(`${API_BASE_URL}${endpoint}`);
@@ -35,9 +53,22 @@ class ApiClient {
 			const data = await response.json();
 
 			if (!response.ok) {
+				const errorMessage = data.error || `HTTP error! status: ${response.status}`;
+
+				// Check if this is a token-related error
+				if (response.status === 401 || this.isTokenExpiredError(errorMessage)) {
+					// Token is invalid or expired, logout user
+					console.warn('Token expired or invalid. Logging out...');
+					logout();
+					return {
+						success: false,
+						error: 'Sessão expirada. Faça login novamente.'
+					};
+				}
+
 				return {
 					success: false,
-					error: data.error || `HTTP error! status: ${response.status}`
+					error: errorMessage
 				};
 			}
 
