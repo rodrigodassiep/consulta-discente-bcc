@@ -9,12 +9,14 @@
 	let password = '';
 	let confirmPassword = '';
 	let loading = false;
+	let desiredRole: 'student' | 'professor' | 'admin' = 'student';
 
 	let firstNameError = '';
 	let lastNameError = '';
 	let emailError = '';
 	let passwordError = '';
 	let confirmPasswordError = '';
+	let roleError = '';
 
 	async function register() {
 		try {
@@ -28,7 +30,10 @@
 					last_name: lastName,
 					email,
 					password,
-					role: 'student' // Default role
+					// Effective role is always student on the server;
+					// this field records what the user is asking for.
+					role: 'student',
+					requested_role: desiredRole
 				})
 			});
 
@@ -81,6 +86,7 @@
 		emailError = '';
 		passwordError = '';
 		confirmPasswordError = '';
+		roleError = '';
 
 		// Validate inputs
 		let isValid = true;
@@ -116,6 +122,11 @@
 			isValid = false;
 		} else if (password !== confirmPassword) {
 			confirmPasswordError = 'Senhas não correspondem';
+			isValid = false;
+		}
+
+		if (!desiredRole) {
+			roleError = 'Selecione um tipo de acesso';
 			isValid = false;
 		}
 
@@ -198,6 +209,51 @@
 					/>
 					{#if emailError}
 						<p class="mt-1 text-sm text-red-600">{emailError}</p>
+					{/if}
+				</div>
+
+				<div>
+					<label class="mb-1 block text-sm font-medium text-gray-700">
+						Tipo de acesso desejado
+					</label>
+					<div class="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-3">
+						<label class="flex cursor-pointer items-center space-x-2 text-sm text-gray-700">
+							<input
+								type="radio"
+								name="role"
+								value="student"
+								bind:group={desiredRole}
+								class="text-primary h-4 w-4 border-gray-300"
+							/>
+							<span>Estudante</span>
+						</label>
+						<label class="flex cursor-pointer items-center space-x-2 text-sm text-gray-700">
+							<input
+								type="radio"
+								name="role"
+								value="professor"
+								bind:group={desiredRole}
+								class="text-primary h-4 w-4 border-gray-300"
+							/>
+							<span>Professor</span>
+						</label>
+						<label class="flex cursor-pointer items-center space-x-2 text-sm text-gray-700">
+							<input
+								type="radio"
+								name="role"
+								value="admin"
+								bind:group={desiredRole}
+								class="text-primary h-4 w-4 border-gray-300"
+							/>
+							<span>Administrador</span>
+						</label>
+					</div>
+					<p class="mt-1 text-xs text-gray-500">
+						Pedidos de acesso como professor ou administrador serão revisados por um
+						administrador. Até lá, sua conta terá acesso como estudante.
+					</p>
+					{#if roleError}
+						<p class="mt-1 text-sm text-red-600">{roleError}</p>
 					{/if}
 				</div>
 

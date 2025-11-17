@@ -90,14 +90,15 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 
 // User model with proper role handling
 type User struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	FirstName string    `json:"first_name" gorm:"not null"`
-	LastName  string    `json:"last_name" gorm:"not null"`
-	Email     string    `json:"email" gorm:"uniqueIndex;not null"`
-	Password  string    `json:"password" gorm:"not null"`
-	Role      string    `json:"role" gorm:"not null;check:role IN ('student','professor','admin')"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID            uint      `json:"id" gorm:"primaryKey"`
+	FirstName     string    `json:"first_name" gorm:"not null"`
+	LastName      string    `json:"last_name" gorm:"not null"`
+	Email         string    `json:"email" gorm:"uniqueIndex;not null"`
+	Password      string    `json:"password" gorm:"not null"`
+	Role          string    `json:"role" gorm:"not null;check:role IN ('student','professor','admin')"`
+	RequestedRole string    `json:"requested_role" gorm:"not null;default:'student'"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // Subject (course information)
@@ -355,16 +356,28 @@ func main() {
 			return
 		}
 
-		// Set default role if not provided
-		if newUser.Role == "" {
-			newUser.Role = RoleStudent
+		// Determine requested role (what the user is asking for)
+		requestedRole := newUser.RequestedRole
+		if requestedRole == "" {
+			// Backwards compatibility: if only Role was sent, treat it as requested role
+			if newUser.Role != "" {
+				requestedRole = newUser.Role
+			} else {
+				requestedRole = RoleStudent
+			}
 		}
 
-		// Validate role
-		if newUser.Role != RoleStudent && newUser.Role != RoleProfessor && newUser.Role != RoleAdmin {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+		// Validate requested role
+		if requestedRole != RoleStudent && requestedRole != RoleProfessor && requestedRole != RoleAdmin {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid requested role"})
 			return
 		}
+
+		// Store requested role separately
+		newUser.RequestedRole = requestedRole
+
+		// Effective role is always student at registration time
+		newUser.Role = RoleStudent
 
 		// Hash the password before storing
 		hashedPassword, err := HashPassword(newUser.Password)
@@ -387,13 +400,14 @@ func main() {
 
 		// Create response user without password
 		responseUser := map[string]interface{}{
-			"id":         newUser.ID,
-			"first_name": newUser.FirstName,
-			"last_name":  newUser.LastName,
-			"email":      newUser.Email,
-			"role":       newUser.Role,
-			"created_at": newUser.CreatedAt,
-			"updated_at": newUser.UpdatedAt,
+			"id":             newUser.ID,
+			"first_name":     newUser.FirstName,
+			"last_name":      newUser.LastName,
+			"email":          newUser.Email,
+			"role":           newUser.Role,
+			"requested_role": newUser.RequestedRole,
+			"created_at":     newUser.CreatedAt,
+			"updated_at":     newUser.UpdatedAt,
 		}
 
 		c.JSON(http.StatusCreated, responseUser)
@@ -430,13 +444,14 @@ func main() {
 		response := map[string]interface{}{
 			"token": token,
 			"user": map[string]interface{}{
-				"id":         foundUser.ID,
-				"first_name": foundUser.FirstName,
-				"last_name":  foundUser.LastName,
-				"email":      foundUser.Email,
-				"role":       foundUser.Role,
-				"created_at": foundUser.CreatedAt,
-				"updated_at": foundUser.UpdatedAt,
+				"id":             foundUser.ID,
+				"first_name":     foundUser.FirstName,
+				"last_name":      foundUser.LastName,
+				"email":          foundUser.Email,
+				"role":           foundUser.Role,
+				"requested_role": foundUser.RequestedRole,
+				"created_at":     foundUser.CreatedAt,
+				"updated_at":     foundUser.UpdatedAt,
 			},
 		}
 
@@ -549,6 +564,55 @@ func main() {
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{"users": users})
+		})
+
+		// List users whose requested role differs from their current role
+		adminGroup.GET("/role-requests", func(c *gin.Context) {
+			var users []User
+			if err := db.Where("requested_role <> role").Find(&users).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch role requests"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"users": users})
+		})
+
+		// Update a user's effective role (approve/reject role requests)
+		adminGroup.PUT("/users/:id/role", func(c *gin.Context) {
+			userIDParam := c.Param("id")
+			userID, err := strconv.ParseUint(userIDParam, 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+				return
+			}
+
+			var body struct {
+				Role string `json:"role"`
+			}
+			if err := c.BindJSON(&body); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+				return
+			}
+
+			if body.Role != RoleStudent && body.Role != RoleProfessor && body.Role != RoleAdmin {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+				return
+			}
+
+			var user User
+			if err := db.First(&user, userID).Error; err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+				return
+			}
+
+			user.Role = body.Role
+			user.RequestedRole = body.Role
+
+			if err := db.Save(&user).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user role"})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"user": user})
 		})
 	}
 

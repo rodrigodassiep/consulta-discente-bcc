@@ -210,6 +210,18 @@ class ApiClient {
 	async getAllUsers() {
 		return this.request('/admin/users');
 	}
+
+	// Role management (admin)
+	async getRoleRequests() {
+		return this.request('/admin/role-requests');
+	}
+
+	async updateUserRole(userId: number, role: 'student' | 'professor' | 'admin') {
+		return this.request(`/admin/users/${userId}/role`, {
+			method: 'PUT',
+			body: JSON.stringify({ role })
+		});
+	}
 }
 
 export const api = new ApiClient();
