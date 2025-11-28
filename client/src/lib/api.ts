@@ -50,7 +50,21 @@ class ApiClient {
 				}
 			});
 
-			const data = await response.json();
+			// Try to parse JSON, handle non-JSON responses
+			let data;
+			const contentType = response.headers.get('content-type');
+			if (contentType && contentType.includes('application/json')) {
+				data = await response.json();
+			} else {
+				const text = await response.text();
+				if (!response.ok) {
+					return {
+						success: false,
+						error: `HTTP error ${response.status}: ${text || response.statusText}`
+					};
+				}
+				data = { message: text };
+			}
 
 			if (!response.ok) {
 				const errorMessage = data.error || `HTTP error! status: ${response.status}`;
@@ -155,6 +169,19 @@ class ApiClient {
 		});
 	}
 
+	async updateQuestion(surveyId: string, questionId: string, question: any) {
+		return this.request(`/professor/surveys/${surveyId}/questions/${questionId}`, {
+			method: 'PUT',
+			body: JSON.stringify(question)
+		});
+	}
+
+	async deleteQuestion(surveyId: string, questionId: string) {
+		return this.request(`/professor/surveys/${surveyId}/questions/${questionId}`, {
+			method: 'DELETE'
+		});
+	}
+
 	async getProfessorResponses() {
 		return this.request('/professor/responses');
 	}
@@ -209,6 +236,18 @@ class ApiClient {
 
 	async getAllUsers() {
 		return this.request('/admin/users');
+	}
+
+	// Role management (admin)
+	async getRoleRequests() {
+		return this.request('/admin/role-requests');
+	}
+
+	async updateUserRole(userId: number, role: 'student' | 'professor' | 'admin') {
+		return this.request(`/admin/users/${userId}/role`, {
+			method: 'PUT',
+			body: JSON.stringify({ role })
+		});
 	}
 }
 

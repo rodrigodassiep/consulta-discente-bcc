@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import Layout from '$lib/components/Layout.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -230,14 +229,17 @@
 	}
 </script>
 
-<Layout title="Respostas da Pesquisa">
-	<div class="mx-auto max-w-7xl space-y-6 p-6">
-		<!-- Header -->
-		<div class="flex items-center justify-between">
-			<div>
-				<h1 class="text-2xl font-bold text-gray-900">Respostas da Pesquisa</h1>
-				<p class="text-gray-600">Visualize e analise as respostas dos alunos</p>
-			</div>
+<svelte:head>
+	<title>Respostas da Pesquisa - Sistema de Consulta Discente</title>
+</svelte:head>
+
+<div class="space-y-6">
+	<!-- Header -->
+	<div class="flex items-center justify-between">
+		<div>
+			<h1 class="text-3xl font-bold text-gray-900">Respostas da Pesquisa</h1>
+			<p class="mt-1 text-gray-600">Visualize e analise as respostas dos alunos</p>
+		</div>
 			<div class="flex gap-2">
 				<Button variant="outline" onclick={handleBackToSurvey} size="sm">
 					<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -573,4 +575,4 @@
 			</div>
 		</div>
 	{/if}
-</Layout>
+</div>
