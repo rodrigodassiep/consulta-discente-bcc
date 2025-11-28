@@ -384,5 +384,4 @@
 				</div>
 			</Card>
 		{/if}
-	</div>
 </div>
