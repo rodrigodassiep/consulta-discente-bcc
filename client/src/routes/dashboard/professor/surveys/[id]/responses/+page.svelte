@@ -240,23 +240,23 @@
 			<h1 class="text-3xl font-bold text-gray-900">Respostas da Pesquisa</h1>
 			<p class="mt-1 text-gray-600">Visualize e analise as respostas dos alunos</p>
 		</div>
-			<div class="flex gap-2">
-				<Button variant="outline" onclick={handleBackToSurvey} size="sm">
-					<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M15 19l-7-7 7-7"
-						></path>
-					</svg>
-					Gerenciar Questões
-				</Button>
-				<Button variant="outline" onclick={handleBackToDashboard} size="sm">Dashboard</Button>
-			</div>
+		<div class="flex gap-2">
+			<Button variant="outline" onclick={handleBackToSurvey} size="sm">
+				<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M15 19l-7-7 7-7"
+					></path>
+				</svg>
+				Gerenciar Questões
+			</Button>
+			<Button variant="outline" onclick={handleBackToDashboard} size="sm">Dashboard</Button>
 		</div>
+	</div>
 
-		{#if loading}
+	{#if loading}
 			<Card>
 				<div class="py-8 text-center">
 					<div
@@ -493,9 +493,8 @@
 						</p>
 					</div>
 				</Card>
-			{/if}
 		{/if}
-	</div>
+	{/if}
 
 	<!-- Student Response Modal -->
 	{#if showStudentModal && selectedStudent}

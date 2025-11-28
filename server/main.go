@@ -193,7 +193,13 @@ var db *gorm.DB
 // CORSMiddleware handles OPTIONS requests and sets CORS headers
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
+		// Get allowed origin from env, default to localhost for development
+		allowedOrigin := os.Getenv("CORS_ORIGIN")
+		if allowedOrigin == "" {
+			allowedOrigin = "http://localhost:5173"
+		}
+
+		c.Header("Access-Control-Allow-Origin", allowedOrigin)
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		c.Header("Access-Control-Allow-Credentials", "true")
@@ -267,17 +273,20 @@ func RequireRole(allowedRoles ...string) gin.HandlerFunc {
 
 func main() {
 
-	err := godotenv.Load()
-	if err != nil {
-		panic("Error loading .env file")
-	}
-	var host, user, password, dbname, port string
+	// Load .env file if it exists (optional in production)
+	_ = godotenv.Load()
+
+	var host, user, password, dbname, port, sslmode string
 	host = os.Getenv("DBHOST")
 	user = os.Getenv("DBUSER")
 	password = os.Getenv("DBPASSWORD")
 	dbname = os.Getenv("DBNAME")
 	port = os.Getenv("DBPORT")
-	dsn := "host=" + host + " user=" + user + " password=" + password + " dbname=" + dbname + " port=" + port + " sslmode=disable"
+	sslmode = os.Getenv("DBSSLMODE")
+	if sslmode == "" {
+		sslmode = "disable" // Default for local development
+	}
+	dsn := "host=" + host + " user=" + user + " password=" + password + " dbname=" + dbname + " port=" + port + " sslmode=" + sslmode
 
 	var err_sql error
 	db, err_sql = gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -287,18 +296,18 @@ func main() {
 
 	// Auto-migrate all the new models
 	log.Println("🔧 Running database migrations...")
-	err = db.AutoMigrate(&User{}, &Subject{}, &Semester{}, &StudentEnrollment{}, &Survey{}, &Question{}, &Response{})
-	if err != nil {
-		log.Printf("⚠️  Migration error: %v", err)
+	migrationErr := db.AutoMigrate(&User{}, &Subject{}, &Semester{}, &StudentEnrollment{}, &Survey{}, &Question{}, &Response{})
+	if migrationErr != nil {
+		log.Printf("⚠️  Migration error: %v", migrationErr)
 		log.Println("🔄 Attempting to reset database...")
 
 		// Drop all tables and recreate them
 		db.Migrator().DropTable(&Response{}, &Question{}, &Survey{}, &StudentEnrollment{}, &Subject{}, &Semester{}, &User{})
 
 		// Retry migration
-		err = db.AutoMigrate(&User{}, &Subject{}, &Semester{}, &StudentEnrollment{}, &Survey{}, &Question{}, &Response{})
-		if err != nil {
-			log.Fatal("Failed to migrate database after reset: ", err)
+		migrationErr = db.AutoMigrate(&User{}, &Subject{}, &Semester{}, &StudentEnrollment{}, &Survey{}, &Question{}, &Response{})
+		if migrationErr != nil {
+			log.Fatal("Failed to migrate database after reset: ", migrationErr)
 		}
 		log.Println("✅ Database reset and migrated successfully")
 	}
@@ -945,5 +954,15 @@ func main() {
 		c.JSON(200, gin.H{"message": "This endpoint is deprecated. Use the new survey system."})
 	})
 
-	r.Run(":3030")
+	// Health check endpoint for Railway
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "healthy"})
+	})
+
+	// Use PORT env variable (Railway sets this), fallback to 3030 for local dev
+	serverPort := os.Getenv("PORT")
+	if serverPort == "" {
+		serverPort = "3030"
+	}
+	r.Run(":" + serverPort)
 }

@@ -430,10 +430,7 @@
 						class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 					/>
 					<label for="terms" class="text-sm text-gray-600">
-						Eu li e aceito os
-						<a href="/terms" class="font-medium text-blue-700 hover:text-blue-800">Termos de Uso</a>
-						e a
-						<a href="/privacy" class="font-medium text-blue-700 hover:text-blue-800">Política de Privacidade</a>
+						Eu li e aceito os Termos de Uso e a Política de Privacidade
 					</label>
 				</div>
 
