@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { api } from '$lib/api';
+
 	let firstName = '';
 	let lastName = '';
 	let email = '';
@@ -21,42 +23,32 @@
 
 	async function register() {
 		try {
-			const response = await fetch('http://localhost:3030/register', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					first_name: firstName,
-					last_name: lastName,
-					email,
-					password,
-					role: 'student',
-					requested_role: desiredRole
-				})
+			const result = await api.register({
+				first_name: firstName,
+				last_name: lastName,
+				email,
+				password,
+				role: 'student',
+				requested_role: desiredRole
 			});
 
-			if (response.ok) {
+			if (result.success) {
 				window.location.href = '/login?registered=true';
 			} else {
-				const error = await response.json();
+				const errorMsg = result.error || '';
 
-				if (response.status === 409) {
+				if (errorMsg.includes('already exists') || errorMsg.includes('duplicate')) {
 					emailError = 'Este email já está cadastrado';
-				} else if (error.error) {
-					if (error.error.includes('First name')) {
-						firstNameError = error.error;
-					} else if (error.error.includes('Last name')) {
-						lastNameError = error.error;
-					} else if (error.error.includes('Email')) {
-						emailError = error.error;
-					} else if (error.error.includes('Password')) {
-						passwordError = error.error;
-					} else {
-						registerError = error.error;
-					}
+				} else if (errorMsg.includes('First name')) {
+					firstNameError = errorMsg;
+				} else if (errorMsg.includes('Last name')) {
+					lastNameError = errorMsg;
+				} else if (errorMsg.includes('Email')) {
+					emailError = errorMsg;
+				} else if (errorMsg.includes('Password')) {
+					passwordError = errorMsg;
 				} else {
-					registerError = 'Erro ao criar conta. Tente novamente.';
+					registerError = errorMsg || 'Erro ao criar conta. Tente novamente.';
 				}
 			}
 		} catch (error) {
