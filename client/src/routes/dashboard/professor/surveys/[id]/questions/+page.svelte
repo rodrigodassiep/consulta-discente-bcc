@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import Layout from '$lib/components/Layout.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -17,6 +16,7 @@
 
 	// Question form state
 	let showAddForm = false;
+	let editingQuestion: any = null; // Track question being edited
 	let questionForm = {
 		type: '',
 		text: '',
@@ -153,7 +153,99 @@
 	function cancelAddQuestion() {
 		resetQuestionForm();
 		showAddForm = false;
+		editingQuestion = null;
 		error = '';
+	}
+
+	function startEditQuestion(question: any) {
+		editingQuestion = question;
+		questionForm = {
+			type: question.type,
+			text: question.text,
+			required: question.required,
+			options: question.type === 'multiple_choice' && question.options
+				? JSON.parse(question.options)
+				: ['']
+		};
+		showAddForm = true;
+		error = '';
+	}
+
+	async function updateQuestion() {
+		// Validate form
+		if (!questionForm.text.trim()) {
+			error = 'O texto da questão é obrigatório';
+			return;
+		}
+
+		if (questionForm.type === 'multiple_choice') {
+			const validOptions = questionForm.options.filter((opt) => opt.trim() !== '');
+			if (validOptions.length < 2) {
+				error = 'Questões de múltipla escolha precisam de pelo menos 2 opções';
+				return;
+			}
+		}
+
+		submitting = true;
+		error = '';
+
+		try {
+			const questionData: any = {
+				type: questionForm.type,
+				text: questionForm.text.trim(),
+				required: questionForm.required,
+				order: editingQuestion.order
+			};
+
+			if (questionForm.type === 'multiple_choice') {
+				const validOptions = questionForm.options.filter((opt) => opt.trim() !== '');
+				questionData.options = JSON.stringify(validOptions);
+			}
+
+			const result = await api.updateQuestion(
+				survey.id.toString(),
+				editingQuestion.id.toString(),
+				questionData
+			);
+
+			if (!result.success) {
+				throw new Error(result.error || 'Falha ao atualizar questão');
+			}
+
+			// Reload questions
+			await loadSurveyAndQuestions(survey.id.toString());
+
+			// Reset form
+			resetQuestionForm();
+			showAddForm = false;
+			editingQuestion = null;
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Erro ao atualizar questão';
+		} finally {
+			submitting = false;
+		}
+	}
+
+	async function deleteQuestion(question: any) {
+		if (!confirm(`Tem certeza que deseja excluir a questão "${question.text}"?`)) {
+			return;
+		}
+
+		try {
+			const result = await api.deleteQuestion(
+				survey.id.toString(),
+				question.id.toString()
+			);
+
+			if (!result.success) {
+				throw new Error(result.error || 'Falha ao excluir questão');
+			}
+
+			// Reload questions
+			await loadSurveyAndQuestions(survey.id.toString());
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Erro ao excluir questão';
+		}
 	}
 
 	function getQuestionTypeLabel(type: string): string {
@@ -166,9 +258,13 @@
 	}
 </script>
 
-<Layout title="Gerenciar Questões">
-	<div class="mx-auto max-w-4xl space-y-6">
-		<!-- Header -->
+<svelte:head>
+	<title>Gerenciar Questões - Sistema de Consulta Discente</title>
+</svelte:head>
+
+<div class="space-y-6">
+	<!-- Header -->
+	<div class="flex items-center justify-between">
 		<div class="flex items-center space-x-4">
 			<Button variant="outline" onclick={handleBackToSurvey} size="sm">
 				<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,6 +280,9 @@
 				{/if}
 			</div>
 		</div>
+	</div>
+
+	<div class="mx-auto max-w-4xl space-y-6">
 
 		<!-- Loading State -->
 		{#if loading}
@@ -255,8 +354,8 @@
 
 									<!-- Question Actions -->
 									<div class="flex items-center space-x-2">
-										<Button size="sm" variant="outline">Editar</Button>
-										<Button size="sm" variant="outline">
+										<Button size="sm" variant="outline" onclick={() => startEditQuestion(question)}>Editar</Button>
+										<Button size="sm" variant="outline" onclick={() => deleteQuestion(question)}>
 											<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path
 													stroke-linecap="round"
@@ -314,9 +413,11 @@
 						</Button>
 					</div>
 				{:else}
-					<!-- Add Question Form -->
+					<!-- Add/Edit Question Form -->
 					<div class="space-y-6">
-						<h2 class="text-lg font-semibold text-gray-900">Nova Questão</h2>
+						<h2 class="text-lg font-semibold text-gray-900">
+							{editingQuestion ? 'Editar Questão' : 'Nova Questão'}
+						</h2>
 
 						<!-- Question Type Selection -->
 						<div>
@@ -432,8 +533,8 @@
 								<Button variant="outline" onclick={cancelAddQuestion} disabled={submitting}>
 									Cancelar
 								</Button>
-								<Button onclick={saveQuestion} disabled={submitting}>
-									{submitting ? 'Salvando...' : 'Salvar Questão'}
+								<Button onclick={editingQuestion ? updateQuestion : saveQuestion} disabled={submitting}>
+									{submitting ? 'Salvando...' : (editingQuestion ? 'Atualizar Questão' : 'Salvar Questão')}
 								</Button>
 							</div>
 						{/if}
@@ -442,4 +543,4 @@
 			</Card>
 		{/if}
 	</div>
-</Layout>
+</div>

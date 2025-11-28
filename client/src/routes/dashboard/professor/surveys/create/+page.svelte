@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import Layout from '$lib/components/Layout.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -200,22 +199,27 @@
 	}
 </script>
 
-<Layout title="Criar Nova Pesquisa">
-	<div class="mx-auto max-w-2xl space-y-6">
-		<!-- Header -->
-		<div class="flex items-center space-x-4">
-			<Button variant="outline" onclick={handleCancel} size="sm">
-				<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"
-					></path>
-				</svg>
-				Voltar
-			</Button>
-			<div>
-				<h1 class="text-3xl font-bold text-gray-900">Criar Nova Pesquisa</h1>
-				<p class="mt-1 text-gray-600">Configure uma nova pesquisa de feedback para seus alunos</p>
-			</div>
+<svelte:head>
+	<title>Criar Nova Pesquisa - Sistema de Consulta Discente</title>
+</svelte:head>
+
+<div class="space-y-6">
+	<!-- Header -->
+	<div class="flex items-center space-x-4">
+		<Button variant="outline" onclick={handleCancel} size="sm">
+			<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"
+				></path>
+			</svg>
+			Voltar
+		</Button>
+		<div>
+			<h1 class="text-3xl font-bold text-gray-900">Criar Nova Pesquisa</h1>
+			<p class="mt-1 text-gray-600">Configure uma nova pesquisa de feedback para seus alunos</p>
 		</div>
+	</div>
+
+	<div class="mx-auto max-w-2xl space-y-6">
 
 		<!-- Loading State -->
 		{#if loading}
@@ -410,4 +414,4 @@
 			</form>
 		{/if}
 	</div>
-</Layout>
+</div>

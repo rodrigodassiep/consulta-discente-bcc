@@ -141,7 +141,6 @@
 		{:else}
 			<!-- Subjects Section -->
 			<div>
-				<h2 class="mb-4 text-xl font-semibold text-gray-900">Minhas Disciplinas</h2>
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 					{#each subjects as subject}
 						<Card class="transition-shadow hover:shadow-md">

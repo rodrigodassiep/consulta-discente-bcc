@@ -703,6 +703,84 @@ func main() {
 			c.JSON(http.StatusCreated, gin.H{"question": question})
 		})
 
+		// Update question
+		professorGroup.PUT("/surveys/:id/questions/:questionId", func(c *gin.Context) {
+			currentUser, _ := c.Get("currentUser")
+			user := currentUser.(User)
+			surveyID := c.Param("id")
+			questionID := c.Param("questionId")
+
+			// Verify survey ownership
+			var survey Survey
+			if err := db.Where("id = ? AND professor_id = ?", surveyID, user.ID).First(&survey).Error; err != nil {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Survey not found or access denied"})
+				return
+			}
+
+			// Find the question
+			var question Question
+			if err := db.Where("id = ? AND survey_id = ?", questionID, surveyID).First(&question).Error; err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Question not found"})
+				return
+			}
+
+			// Bind update data
+			var updateData struct {
+				Text     string `json:"text"`
+				Type     string `json:"type"`
+				Required bool   `json:"required"`
+				Options  string `json:"options"`
+				Order    int    `json:"order"`
+			}
+			if err := c.BindJSON(&updateData); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+				return
+			}
+
+			// Update fields
+			if updateData.Text != "" {
+				question.Text = updateData.Text
+			}
+			if updateData.Type != "" {
+				question.Type = updateData.Type
+			}
+			question.Required = updateData.Required
+			if updateData.Options != "" {
+				question.Options = updateData.Options
+			}
+			if updateData.Order > 0 {
+				question.Order = updateData.Order
+			}
+
+			if err := db.Save(&question).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update question"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"question": question})
+		})
+
+		// Delete question
+		professorGroup.DELETE("/surveys/:id/questions/:questionId", func(c *gin.Context) {
+			currentUser, _ := c.Get("currentUser")
+			user := currentUser.(User)
+			surveyID := c.Param("id")
+			questionID := c.Param("questionId")
+
+			// Verify survey ownership
+			var survey Survey
+			if err := db.Where("id = ? AND professor_id = ?", surveyID, user.ID).First(&survey).Error; err != nil {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Survey not found or access denied"})
+				return
+			}
+
+			// Delete the question
+			if err := db.Where("id = ? AND survey_id = ?", questionID, surveyID).Delete(&Question{}).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete question"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"message": "Question deleted successfully"})
+		})
+
 		// Get responses for professor's surveys
 		professorGroup.GET("/responses", func(c *gin.Context) {
 			currentUser, _ := c.Get("currentUser")
