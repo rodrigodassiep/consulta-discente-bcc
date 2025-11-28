@@ -964,5 +964,10 @@ func main() {
 	if serverPort == "" {
 		serverPort = "3030"
 	}
-	r.Run(":" + serverPort)
+	// Bind to 0.0.0.0 to accept connections from Railway's proxy
+	addr := "0.0.0.0:" + serverPort
+	log.Printf("🚀 Starting server on %s", addr)
+	if err := r.Run(addr); err != nil {
+		log.Fatal("Failed to start server: ", err)
+	}
 }
