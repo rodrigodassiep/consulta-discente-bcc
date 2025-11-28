@@ -1,6 +1,7 @@
 import { logout } from './auth';
+import { env } from '$env/dynamic/public';
 
-const API_BASE_URL = 'http://localhost:3030';
+const API_BASE_URL = env.PUBLIC_API_URL || 'http://localhost:3030';
 
 interface ApiResponse<T> {
 	success: boolean;

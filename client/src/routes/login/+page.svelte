@@ -241,9 +241,6 @@
 						/>
 						<span class="text-sm text-gray-600">Lembrar-me</span>
 					</label>
-					<a href="/forgot-password" class="text-sm font-medium text-blue-700 hover:text-blue-800">
-						Esqueceu a senha?
-					</a>
 				</div>
 
 				<!-- Submit Button -->
