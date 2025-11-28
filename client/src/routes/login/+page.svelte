@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { api } from '$lib/api';
 
 	let email = '';
 	let password = '';
@@ -22,17 +23,10 @@
 
 	async function login() {
 		try {
-			const response = await fetch('http://localhost:3030/login', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ email, password })
-			});
+			const result = await api.login(email, password);
 
-			const data = await response.json();
-
-			if (response.ok) {
+			if (result.success && result.data) {
+				const data = result.data as any;
 				let token, user;
 
 				if (data.token && data.user) {
@@ -57,10 +51,11 @@
 				const redirectPath = roleRedirects[user.role as keyof typeof roleRedirects] || '/';
 				window.location.href = redirectPath;
 			} else {
-				if (response.status === 401) {
+				const errorMsg = result.error || '';
+				if (errorMsg.includes('credentials') || errorMsg.includes('Invalid')) {
 					loginError = 'Email ou senha incorretos. Verifique suas credenciais e tente novamente.';
 				} else {
-					loginError = data.error || 'Erro no servidor. Tente novamente mais tarde.';
+					loginError = errorMsg || 'Erro no servidor. Tente novamente mais tarde.';
 				}
 			}
 		} catch (error) {

@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { env } from '$env/dynamic/public';
+
+	const API_BASE_URL = env.PUBLIC_API_URL || 'http://localhost:3030';
+
 	let nome = '';
 	let dataInicio = '';
 	let dataFim = '';
@@ -7,7 +11,7 @@
 
 	async function createConsultation() {
 		try {
-			const response = await fetch('http://localhost:3030/consulta', {
+			const response = await fetch(`${API_BASE_URL}/consulta`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -19,12 +23,12 @@
 				const data = await response.json();
 				// Handle successful creation
 			} else {
-				const error = await response.json();
+				const errorData = await response.json();
 				// Handle error
-				console.error('Error creating consultation:', error);
+				console.error('Error creating consultation:', errorData);
 			}
-		} catch (error) {
-			console.error('Error during consultation creation:', error);
+		} catch (err) {
+			console.error('Error during consultation creation:', err);
 		}
 	}
 
