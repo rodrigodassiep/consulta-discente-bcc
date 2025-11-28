@@ -192,21 +192,21 @@ var db *gorm.DB
 
 // CORSMiddleware handles OPTIONS requests and sets CORS headers
 func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Get allowed origin from env, default to localhost for development
-		allowedOrigin := os.Getenv("CORS_ORIGIN")
-		if allowedOrigin == "" {
-			allowedOrigin = "http://localhost:5173"
-		}
+	// Get allowed origin from env at startup, default to localhost for development
+	allowedOrigin := os.Getenv("CORS_ORIGIN")
+	if allowedOrigin == "" {
+		allowedOrigin = "http://localhost:5173"
+	}
+	log.Printf("CORS configured for origin: %s", allowedOrigin)
 
+	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", allowedOrigin)
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		c.Header("Access-Control-Allow-Credentials", "true")
 
-		// Handle OPTIONS requests
+		// Handle OPTIONS preflight requests
 		if c.Request.Method == "OPTIONS" {
-			log.Println("OPTIONS request received")
 			c.AbortWithStatus(204)
 			return
 		}
