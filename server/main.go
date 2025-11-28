@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
@@ -190,28 +191,21 @@ type Response struct {
 // Global database variable
 var db *gorm.DB
 
-// CORSMiddleware handles OPTIONS requests and sets CORS headers
-func CORSMiddleware() gin.HandlerFunc {
-	// Get allowed origin from env at startup, default to localhost for development
+// getCORSConfig returns CORS configuration for the server
+func getCORSConfig() cors.Config {
 	allowedOrigin := os.Getenv("CORS_ORIGIN")
 	if allowedOrigin == "" {
 		allowedOrigin = "http://localhost:5173"
 	}
 	log.Printf("CORS configured for origin: %s", allowedOrigin)
 
-	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", allowedOrigin)
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		c.Header("Access-Control-Allow-Credentials", "true")
-
-		// Handle OPTIONS preflight requests
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
+	return cors.Config{
+		AllowOrigins:     []string{allowedOrigin},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
 	}
 }
 
@@ -318,7 +312,7 @@ func main() {
 	r := gin.Default()
 
 	// Apply CORS middleware to all routes
-	r.Use(CORSMiddleware())
+	r.Use(cors.New(getCORSConfig()))
 
 	// Public endpoints
 	r.GET("/", func(c *gin.Context) {
