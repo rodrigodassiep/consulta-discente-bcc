@@ -6,264 +6,16 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"rsc.io/quote"
 )
 
-// User roles constants
-const (
-	RoleStudent   = "student"
-	RoleProfessor = "professor"
-	RoleAdmin     = "admin"
-)
-
-// Question types constants
-const (
-	QuestionTypeNPS      = "nps"
-	QuestionTypeFreeText = "free_text"
-	QuestionTypeRating   = "rating"
-	QuestionTypeChoice   = "multiple_choice"
-)
-
-// JWT Claims structure
-type Claims struct {
-	UserID uint   `json:"user_id"`
-	Role   string `json:"role"`
-	jwt.RegisteredClaims
-}
-
-// Password hashing utilities
-func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(bytes), err
-}
-
-func CheckPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
-}
-
-// JWT token utilities
-func GenerateJWT(userID uint, role string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
-	claims := &Claims{
-		UserID: userID,
-		Role:   role,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "fallback_secret_key_change_in_production"
-	}
-	return token.SignedString([]byte(jwtSecret))
-}
-
-func ValidateJWT(tokenString string) (*Claims, error) {
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		jwtSecret = "fallback_secret_key_change_in_production"
-	}
-
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(jwtSecret), nil
-	})
-
-	if err != nil || !token.Valid {
-		return nil, err
-	}
-
-	return claims, nil
-}
-
-// User model with proper role handling
-type User struct {
-	ID            uint      `json:"id" gorm:"primaryKey"`
-	FirstName     string    `json:"first_name" gorm:"not null"`
-	LastName      string    `json:"last_name" gorm:"not null"`
-	Email         string    `json:"email" gorm:"uniqueIndex;not null"`
-	Password      string    `json:"password" gorm:"not null"`
-	Role          string    `json:"role" gorm:"not null;check:role IN ('student','professor','admin')"`
-	RequestedRole string    `json:"requested_role" gorm:"not null;default:'student'"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-}
-
-// Subject (course information)
-type Subject struct {
-	ID          uint      `json:"id" gorm:"primaryKey"`
-	Name        string    `json:"name" gorm:"not null"`
-	Code        string    `json:"code" gorm:"uniqueIndex;not null"`
-	Description string    `json:"description"`
-	ProfessorID uint      `json:"professor_id" gorm:"not null"`
-	Professor   User      `json:"professor" gorm:"foreignKey:ProfessorID;references:ID"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-// Semester (academic periods)
-type Semester struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	Name      string    `json:"name" gorm:"not null"` // e.g., "2024.1", "2024.2"
-	Year      int       `json:"year" gorm:"not null"`
-	Period    int       `json:"period" gorm:"not null"` // 1 or 2
-	StartDate time.Time `json:"start_date" gorm:"not null"`
-	EndDate   time.Time `json:"end_date" gorm:"not null"`
-	IsActive  bool      `json:"is_active" gorm:"default:false"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// StudentEnrollment (student-subject-semester relationships)
-type StudentEnrollment struct {
-	ID         uint      `json:"id" gorm:"primaryKey"`
-	StudentID  uint      `json:"student_id" gorm:"not null"`
-	Student    User      `json:"student" gorm:"foreignKey:StudentID;references:ID"`
-	SubjectID  uint      `json:"subject_id" gorm:"not null"`
-	Subject    Subject   `json:"subject" gorm:"foreignKey:SubjectID;references:ID"`
-	SemesterID uint      `json:"semester_id" gorm:"not null"`
-	Semester   Semester  `json:"semester" gorm:"foreignKey:SemesterID;references:ID"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
-}
-
-// Survey (feedback forms created by professors)
-type Survey struct {
-	ID          uint       `json:"id" gorm:"primaryKey"`
-	Title       string     `json:"title" gorm:"not null"`
-	Description string     `json:"description"`
-	SubjectID   uint       `json:"subject_id" gorm:"not null"`
-	Subject     Subject    `json:"subject" gorm:"foreignKey:SubjectID;references:ID"`
-	SemesterID  uint       `json:"semester_id" gorm:"not null"`
-	Semester    Semester   `json:"semester" gorm:"foreignKey:SemesterID;references:ID"`
-	ProfessorID uint       `json:"professor_id" gorm:"not null"`
-	Professor   User       `json:"professor" gorm:"foreignKey:ProfessorID;references:ID"`
-	IsActive    bool       `json:"is_active" gorm:"default:true"`
-	OpenDate    time.Time  `json:"open_date"`
-	CloseDate   time.Time  `json:"close_date"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	Questions   []Question `json:"questions" gorm:"foreignKey:SurveyID"`
-}
-
-// Question (individual questions with types)
-type Question struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	SurveyID  uint      `json:"survey_id" gorm:"not null"`
-	Survey    Survey    `json:"survey" gorm:"foreignKey:SurveyID;references:ID"`
-	Type      string    `json:"type" gorm:"not null;check:type IN ('nps','free_text','rating','multiple_choice')"`
-	Text      string    `json:"text" gorm:"not null"`
-	Required  bool      `json:"required" gorm:"default:false"`
-	Order     int       `json:"order" gorm:"not null"`
-	Options   string    `json:"options"` // JSON string for multiple choice options
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// Response (student answers)
-type Response struct {
-	ID          uint      `json:"id" gorm:"primaryKey"`
-	SurveyID    uint      `json:"survey_id" gorm:"not null"`
-	Survey      Survey    `json:"survey" gorm:"foreignKey:SurveyID;references:ID"`
-	StudentID   uint      `json:"student_id" gorm:"not null"`
-	Student     User      `json:"student" gorm:"foreignKey:StudentID;references:ID"`
-	QuestionID  uint      `json:"question_id" gorm:"not null"`
-	Question    Question  `json:"question" gorm:"foreignKey:QuestionID;references:ID"`
-	Answer      string    `json:"answer" gorm:"not null"`
-	SubmittedAt time.Time `json:"submitted_at" gorm:"autoCreateTime"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
 // Global database variable
 var db *gorm.DB
-
-// CORSMiddleware handles OPTIONS requests and sets CORS headers
-func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		c.Header("Access-Control-Allow-Credentials", "true")
-
-		// Handle OPTIONS requests
-		if c.Request.Method == "OPTIONS" {
-			log.Println("OPTIONS request received")
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// JWT-based role middleware
-func RequireRole(allowedRoles ...string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
-			c.Abort()
-			return
-		}
-
-		// Extract token from "Bearer <token>" format
-		tokenParts := strings.Split(authHeader, " ")
-		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
-			c.Abort()
-			return
-		}
-
-		tokenString := tokenParts[1]
-		claims, err := ValidateJWT(tokenString)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
-			c.Abort()
-			return
-		}
-
-		// Check if user role is allowed
-		allowed := false
-		for _, role := range allowedRoles {
-			if claims.Role == role {
-				allowed = true
-				break
-			}
-		}
-
-		if !allowed {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
-			c.Abort()
-			return
-		}
-
-		// Store user data in context for later use
-		var user User
-		if err := db.First(&user, claims.UserID).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
-			c.Abort()
-			return
-		}
-
-		c.Set("currentUser", user)
-		c.Set("userID", claims.UserID)
-		c.Set("userRole", claims.Role)
-		c.Next()
-	}
-}
 
 func main() {
 
@@ -304,7 +56,11 @@ func main() {
 	}
 
 	// Seed database with sample data (comment out after first run if you want to keep data)
-	// seedDatabase(db)
+	// Seed database if SEED_DB environment variable is set to "true"
+	if os.Getenv("SEED_DB") == "true" {
+		log.Println("🌱 SEED_DB=true detected, seeding database...")
+		seedDatabase(db)
+	}
 
 	r := gin.Default()
 
@@ -613,6 +369,12 @@ func main() {
 			}
 
 			c.JSON(http.StatusOK, gin.H{"user": user})
+		})
+
+		// Seed database endpoint (admin only)
+		adminGroup.POST("/seed", func(c *gin.Context) {
+			seedDatabase(db)
+			c.JSON(http.StatusOK, gin.H{"message": "Database seeded successfully"})
 		})
 	}
 

@@ -32,7 +32,7 @@ func TestSeedDatabase(t *testing.T) {
 
 		// Verify admin user exists
 		var admin User
-		err = db.Where("role = ? AND email = ?", RoleAdmin, "admin@usp.br").First(&admin).Error
+		err = db.Where("role = ? AND email = ?", RoleAdmin, "admin@univasf.edu.br").First(&admin).Error
 		assert.NoError(t, err)
 		assert.Equal(t, "Carlos", admin.FirstName)
 		assert.Equal(t, "Administrator", admin.LastName)
@@ -139,14 +139,14 @@ func TestSeedDatabase(t *testing.T) {
 
 		// Test specific professors
 		var maria User
-		err = db.Where("email = ?", "maria.silva@usp.br").First(&maria).Error
+		err = db.Where("email = ?", "maria.silva@univasf.edu.br").First(&maria).Error
 		assert.NoError(t, err)
 		assert.Equal(t, "Maria", maria.FirstName)
 		assert.Equal(t, "Silva", maria.LastName)
 		assert.Equal(t, RoleProfessor, maria.Role)
 
 		var joao User
-		err = db.Where("email = ?", "joao.santos@usp.br").First(&joao).Error
+		err = db.Where("email = ?", "joao.santos@univasf.edu.br").First(&joao).Error
 		assert.NoError(t, err)
 		assert.Equal(t, "João", joao.FirstName)
 		assert.Equal(t, "Santos", joao.LastName)
@@ -154,7 +154,7 @@ func TestSeedDatabase(t *testing.T) {
 
 		// Test specific students
 		var pedro User
-		err = db.Where("email = ?", "pedro.oliveira@usp.br").First(&pedro).Error
+		err = db.Where("email = ?", "pedro.oliveira@discente.univasf.edu.br").First(&pedro).Error
 		assert.NoError(t, err)
 		assert.Equal(t, "Pedro", pedro.FirstName)
 		assert.Equal(t, "Oliveira", pedro.LastName)
