@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
-	"strconv"
+	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -15,7 +15,29 @@ import (
 func TestCORSMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	t.Run("CORS Headers Set Correctly", func(t *testing.T) {
+	t.Run("CORS Headers Set On Preflight Request", func(t *testing.T) {
+		r := gin.New()
+		r.Use(CORSMiddleware())
+
+		r.GET("/test", func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "test"})
+		})
+
+		// Preflight OPTIONS request
+		req, _ := http.NewRequest("OPTIONS", "/test", nil)
+		req.Header.Set("Origin", "http://localhost:5173")
+		req.Header.Set("Access-Control-Request-Method", "GET")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		// gin-contrib/cors returns 204 for preflight
+		assert.Equal(t, 204, w.Code)
+		assert.Equal(t, "http://localhost:5173", w.Header().Get("Access-Control-Allow-Origin"))
+		assert.Contains(t, w.Header().Get("Access-Control-Allow-Methods"), "GET")
+		assert.Equal(t, "true", w.Header().Get("Access-Control-Allow-Credentials"))
+	})
+
+	t.Run("CORS Headers Set On Regular Request With Origin", func(t *testing.T) {
 		r := gin.New()
 		r.Use(CORSMiddleware())
 
@@ -24,17 +46,16 @@ func TestCORSMiddleware(t *testing.T) {
 		})
 
 		req, _ := http.NewRequest("GET", "/test", nil)
+		req.Header.Set("Origin", "http://localhost:5173")
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
 		assert.Equal(t, "http://localhost:5173", w.Header().Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS", w.Header().Get("Access-Control-Allow-Methods"))
-		assert.Equal(t, "Content-Type, Authorization, X-User-ID", w.Header().Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "true", w.Header().Get("Access-Control-Allow-Credentials"))
 	})
 
-	t.Run("OPTIONS Request Handled", func(t *testing.T) {
+	t.Run("CORS Rejects Unauthorized Origin", func(t *testing.T) {
 		r := gin.New()
 		r.Use(CORSMiddleware())
 
@@ -42,12 +63,14 @@ func TestCORSMiddleware(t *testing.T) {
 			c.JSON(200, gin.H{"message": "test"})
 		})
 
-		req, _ := http.NewRequest("OPTIONS", "/test", nil)
+		req, _ := http.NewRequest("GET", "/test", nil)
+		req.Header.Set("Origin", "http://malicious-site.com")
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
-		assert.Equal(t, 204, w.Code)
-		assert.Equal(t, "http://localhost:5173", w.Header().Get("Access-Control-Allow-Origin"))
+		// gin-contrib/cors returns 403 for unauthorized origins
+		assert.Equal(t, 403, w.Code)
+		assert.Empty(t, w.Header().Get("Access-Control-Allow-Origin"))
 	})
 }
 
@@ -61,9 +84,14 @@ func TestRequireRole(t *testing.T) {
 	// Auto-migrate User model
 	testDB.AutoMigrate(&User{})
 
-	// Set global db variable for middleware
+	// Save and restore original db
 	originalDB := db
+	db = testDB
 	defer func() { db = originalDB }()
+
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test_secret_key")
+	defer os.Unsetenv("JWT_SECRET")
 
 	// Create test users
 	student := User{
@@ -86,19 +114,19 @@ func TestRequireRole(t *testing.T) {
 
 	admin := User{
 		FirstName: "Admin",
-		LastName:  "Admin",
+		LastName:  "User",
 		Email:     "admin@test.com",
 		Password:  "password123",
 		Role:      RoleAdmin,
 	}
 	testDB.Create(&admin)
 
-	// Temporarily set the global db variable
-	originalGlobalDB := db
-	db = testDB
-	defer func() { db = originalGlobalDB }()
+	// Generate JWT tokens for test users
+	studentToken, _ := GenerateJWT(student.ID, student.Role)
+	professorToken, _ := GenerateJWT(professor.ID, professor.Role)
+	adminToken, _ := GenerateJWT(admin.ID, admin.Role)
 
-	t.Run("Missing User ID Header", func(t *testing.T) {
+	t.Run("Missing Authorization Header", func(t *testing.T) {
 		r := gin.New()
 		r.Use(RequireRole(RoleStudent))
 
@@ -111,10 +139,10 @@ func TestRequireRole(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, 401, w.Code)
-		assert.Contains(t, w.Body.String(), "User ID header required")
+		assert.Contains(t, w.Body.String(), "Authorization header required")
 	})
 
-	t.Run("Invalid User ID Header", func(t *testing.T) {
+	t.Run("Invalid Authorization Header Format", func(t *testing.T) {
 		r := gin.New()
 		r.Use(RequireRole(RoleStudent))
 
@@ -123,29 +151,29 @@ func TestRequireRole(t *testing.T) {
 		})
 
 		req, _ := http.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-User-ID", "invalid")
-		w := httptest.NewRecorder()
-		r.ServeHTTP(w, req)
-
-		assert.Equal(t, 400, w.Code)
-		assert.Contains(t, w.Body.String(), "Invalid user ID")
-	})
-
-	t.Run("User Not Found", func(t *testing.T) {
-		r := gin.New()
-		r.Use(RequireRole(RoleStudent))
-
-		r.GET("/test", func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "authorized"})
-		})
-
-		req, _ := http.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-User-ID", "999") // Non-existent user ID
+		req.Header.Set("Authorization", "InvalidFormat")
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, 401, w.Code)
-		assert.Contains(t, w.Body.String(), "User not found")
+		assert.Contains(t, w.Body.String(), "Invalid authorization header format")
+	})
+
+	t.Run("Invalid JWT Token", func(t *testing.T) {
+		r := gin.New()
+		r.Use(RequireRole(RoleStudent))
+
+		r.GET("/test", func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "authorized"})
+		})
+
+		req, _ := http.NewRequest("GET", "/test", nil)
+		req.Header.Set("Authorization", "Bearer invalid_token_here")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, 401, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid or expired token")
 	})
 
 	t.Run("Authorized Student Access", func(t *testing.T) {
@@ -161,7 +189,7 @@ func TestRequireRole(t *testing.T) {
 		})
 
 		req, _ := http.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-User-ID", strconv.Itoa(int(student.ID)))
+		req.Header.Set("Authorization", "Bearer "+studentToken)
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
@@ -182,7 +210,7 @@ func TestRequireRole(t *testing.T) {
 		})
 
 		req, _ := http.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-User-ID", strconv.Itoa(int(professor.ID)))
+		req.Header.Set("Authorization", "Bearer "+professorToken)
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
@@ -199,7 +227,7 @@ func TestRequireRole(t *testing.T) {
 		})
 
 		req, _ := http.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-User-ID", strconv.Itoa(int(student.ID))) // Student trying to access admin endpoint
+		req.Header.Set("Authorization", "Bearer "+studentToken) // Student trying to access admin endpoint
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
@@ -207,7 +235,7 @@ func TestRequireRole(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "Insufficient permissions")
 	})
 
-	t.Run("Multiple Allowed Roles", func(t *testing.T) {
+	t.Run("Multiple Allowed Roles - Student Allowed", func(t *testing.T) {
 		r := gin.New()
 		r.Use(RequireRole(RoleStudent, RoleProfessor)) // Allow both student and professor
 
@@ -215,35 +243,50 @@ func TestRequireRole(t *testing.T) {
 			c.JSON(200, gin.H{"message": "authorized"})
 		})
 
-		// Test with student
 		req, _ := http.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-User-ID", strconv.Itoa(int(student.ID)))
+		req.Header.Set("Authorization", "Bearer "+studentToken)
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, 200, w.Code)
 		assert.Contains(t, w.Body.String(), "authorized")
-
-		// Test with professor
-		req2, _ := http.NewRequest("GET", "/test", nil)
-		req2.Header.Set("X-User-ID", strconv.Itoa(int(professor.ID)))
-		w2 := httptest.NewRecorder()
-		r.ServeHTTP(w2, req2)
-
-		assert.Equal(t, 200, w2.Code)
-		assert.Contains(t, w2.Body.String(), "authorized")
-
-		// Test with admin (should be denied)
-		req3, _ := http.NewRequest("GET", "/test", nil)
-		req3.Header.Set("X-User-ID", strconv.Itoa(int(admin.ID)))
-		w3 := httptest.NewRecorder()
-		r.ServeHTTP(w3, req3)
-
-		assert.Equal(t, 403, w3.Code)
-		assert.Contains(t, w3.Body.String(), "Insufficient permissions")
 	})
 
-	t.Run("Admin Access to All Roles", func(t *testing.T) {
+	t.Run("Multiple Allowed Roles - Professor Allowed", func(t *testing.T) {
+		r := gin.New()
+		r.Use(RequireRole(RoleStudent, RoleProfessor))
+
+		r.GET("/test", func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "authorized"})
+		})
+
+		req, _ := http.NewRequest("GET", "/test", nil)
+		req.Header.Set("Authorization", "Bearer "+professorToken)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, 200, w.Code)
+		assert.Contains(t, w.Body.String(), "authorized")
+	})
+
+	t.Run("Multiple Allowed Roles - Admin Denied", func(t *testing.T) {
+		r := gin.New()
+		r.Use(RequireRole(RoleStudent, RoleProfessor)) // Only student and professor allowed
+
+		r.GET("/test", func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "authorized"})
+		})
+
+		req, _ := http.NewRequest("GET", "/test", nil)
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, 403, w.Code)
+		assert.Contains(t, w.Body.String(), "Insufficient permissions")
+	})
+
+	t.Run("Admin Access to Admin Endpoint", func(t *testing.T) {
 		r := gin.New()
 		r.Use(RequireRole(RoleAdmin))
 
@@ -256,7 +299,7 @@ func TestRequireRole(t *testing.T) {
 		})
 
 		req, _ := http.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-User-ID", strconv.Itoa(int(admin.ID)))
+		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 

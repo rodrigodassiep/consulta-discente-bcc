@@ -209,6 +209,11 @@ func getCORSConfig() cors.Config {
 	}
 }
 
+// CORSMiddleware returns the CORS middleware handler
+func CORSMiddleware() gin.HandlerFunc {
+	return cors.New(getCORSConfig())
+}
+
 // JWT-based role middleware
 func RequireRole(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
