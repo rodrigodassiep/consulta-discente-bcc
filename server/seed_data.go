@@ -31,38 +31,47 @@ func seedDatabase(db *gorm.DB) {
 	// Create users
 	log.Println("👥 Creating users...")
 
+	// Hash passwords for seed users
+	adminPass, _ := HashPassword("admin123")
+	profPass, _ := HashPassword("prof123")
+	studentPass, _ := HashPassword("student123")
+
 	// Admin user
 	admin := User{
-		FirstName: "Carlos",
-		LastName:  "Administrator",
-		Email:     "admin@univasf.edu.br",
-		Password:  "admin123",
-		Role:      RoleAdmin,
+		FirstName:     "Carlos",
+		LastName:      "Administrator",
+		Email:         "admin@usp.br",
+		Password:      adminPass,
+		Role:          RoleAdmin,
+		RequestedRole: RoleAdmin,
 	}
 	db.Create(&admin)
 
 	// Professor users
 	professors := []User{
 		{
-			FirstName: "Maria",
-			LastName:  "Silva",
-			Email:     "maria.silva@univasf.edu.br",
-			Password:  "prof123",
-			Role:      RoleProfessor,
+			FirstName:     "Maria",
+			LastName:      "Silva",
+			Email:         "maria.silva@usp.br",
+			Password:      profPass,
+			Role:          RoleProfessor,
+			RequestedRole: RoleProfessor,
 		},
 		{
-			FirstName: "João",
-			LastName:  "Santos",
-			Email:     "joao.santos@univasf.edu.br",
-			Password:  "prof123",
-			Role:      RoleProfessor,
+			FirstName:     "João",
+			LastName:      "Santos",
+			Email:         "joao.santos@usp.br",
+			Password:      profPass,
+			Role:          RoleProfessor,
+			RequestedRole: RoleProfessor,
 		},
 		{
-			FirstName: "Ana",
-			LastName:  "Costa",
-			Email:     "ana.costa@univasf.edu.br",
-			Password:  "prof123",
-			Role:      RoleProfessor,
+			FirstName:     "Ana",
+			LastName:      "Costa",
+			Email:         "ana.costa@usp.br",
+			Password:      profPass,
+			Role:          RoleProfessor,
+			RequestedRole: RoleProfessor,
 		},
 	}
 
@@ -73,39 +82,44 @@ func seedDatabase(db *gorm.DB) {
 	// Student users
 	students := []User{
 		{
-			FirstName: "Pedro",
-			LastName:  "Oliveira",
-			Email:     "pedro.oliveira@discente.univasf.edu.br",
-			Password:  "student123",
-			Role:      RoleStudent,
+			FirstName:     "Pedro",
+			LastName:      "Oliveira",
+			Email:         "pedro.oliveira@usp.br",
+			Password:      studentPass,
+			Role:          RoleStudent,
+			RequestedRole: RoleStudent,
 		},
 		{
-			FirstName: "Julia",
-			LastName:  "Ferreira",
-			Email:     "julia.ferreira@discente.univasf.edu.br",
-			Password:  "student123",
-			Role:      RoleStudent,
+			FirstName:     "Julia",
+			LastName:      "Ferreira",
+			Email:         "julia.ferreira@usp.br",
+			Password:      studentPass,
+			Role:          RoleStudent,
+			RequestedRole: RoleStudent,
 		},
 		{
-			FirstName: "Lucas",
-			LastName:  "Almeida",
-			Email:     "lucas.almeida@discente.univasf.edu.br",
-			Password:  "student123",
-			Role:      RoleStudent,
+			FirstName:     "Lucas",
+			LastName:      "Almeida",
+			Email:         "lucas.almeida@usp.br",
+			Password:      studentPass,
+			Role:          RoleStudent,
+			RequestedRole: RoleStudent,
 		},
 		{
-			FirstName: "Carla",
-			LastName:  "Mendes",
-			Email:     "carla.mendes@discente.univasf.edu.br",
-			Password:  "student123",
-			Role:      RoleStudent,
+			FirstName:     "Carla",
+			LastName:      "Mendes",
+			Email:         "carla.mendes@usp.br",
+			Password:      studentPass,
+			Role:          RoleStudent,
+			RequestedRole: RoleStudent,
 		},
 		{
-			FirstName: "Rafael",
-			LastName:  "Lima",
-			Email:     "rafael.lima@discente.univasf.edu.br",
-			Password:  "student123",
-			Role:      RoleStudent,
+			FirstName:     "Rafael",
+			LastName:      "Lima",
+			Email:         "rafael.lima@usp.br",
+			Password:      studentPass,
+			Role:          RoleStudent,
+			RequestedRole: RoleStudent,
 		},
 	}
 
@@ -446,37 +460,134 @@ func seedDatabase(db *gorm.DB) {
 		db.Create(&question)
 	}
 
-	// Create some sample responses
+	// Create comprehensive sample responses
 	log.Println("💬 Creating sample responses...")
 
-	// Get some questions for responses
-	var questions []Question
-	db.Limit(6).Find(&questions)
+	// Get all questions organized by survey
+	var survey1Qs, survey2Qs, survey3Qs []Question
+	db.Where("survey_id = ?", createdSurveys[0].ID).Order("\"order\"").Find(&survey1Qs)
+	db.Where("survey_id = ?", createdSurveys[1].ID).Order("\"order\"").Find(&survey2Qs)
+	db.Where("survey_id = ?", createdSurveys[2].ID).Order("\"order\"").Find(&survey3Qs)
 
-	sampleResponses := []Response{
-		{
-			SurveyID:   createdSurveys[0].ID,
-			StudentID:  createdStudents[1].ID, // Julia responding to Estruturas de Dados (she's not enrolled, but we'll allow for demo)
-			QuestionID: questions[0].ID,
-			Answer:     "8",
-		},
-		{
-			SurveyID:   createdSurveys[0].ID,
-			StudentID:  createdStudents[1].ID,
-			QuestionID: questions[1].ID,
-			Answer:     "4",
-		},
-		{
-			SurveyID:   createdSurveys[1].ID,
-			StudentID:  createdStudents[0].ID, // Pedro responding to POO
-			QuestionID: questions[4].ID,
-			Answer:     "3",
-		},
+	// =========================================================================
+	// Responses for Survey 1: Estruturas de Dados (createdSurveys[0])
+	// Enrolled students: Pedro (0), Lucas (2), Rafael (4)
+	// =========================================================================
+
+	// Pedro's responses to Estruturas de Dados
+	if len(survey1Qs) >= 4 {
+		pedroSurvey1Responses := []Response{
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[0].ID, QuestionID: survey1Qs[0].ID, Answer: "9"},                        // NPS
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[0].ID, QuestionID: survey1Qs[1].ID, Answer: "5"},                        // Rating
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[0].ID, QuestionID: survey1Qs[2].ID, Answer: "Exercícios práticos"},      // Multiple choice
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[0].ID, QuestionID: survey1Qs[3].ID, Answer: "Excelente disciplina! O professor explica muito bem os conceitos de árvores e grafos. Sugiro mais exercícios práticos de implementação."}, // Free text
+		}
+		for _, r := range pedroSurvey1Responses {
+			db.Create(&r)
+		}
+
+		// Lucas's responses to Estruturas de Dados
+		lucasSurvey1Responses := []Response{
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[2].ID, QuestionID: survey1Qs[0].ID, Answer: "8"},
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[2].ID, QuestionID: survey1Qs[1].ID, Answer: "4"},
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[2].ID, QuestionID: survey1Qs[2].ID, Answer: "Conteúdo teórico"},
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[2].ID, QuestionID: survey1Qs[3].ID, Answer: "Gostei muito da abordagem teórica. Seria bom ter mais exemplos de aplicações reais."},
+		}
+		for _, r := range lucasSurvey1Responses {
+			db.Create(&r)
+		}
+
+		// Rafael's responses to Estruturas de Dados
+		rafaelSurvey1Responses := []Response{
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[4].ID, QuestionID: survey1Qs[0].ID, Answer: "7"},
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[4].ID, QuestionID: survey1Qs[1].ID, Answer: "4"},
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[4].ID, QuestionID: survey1Qs[2].ID, Answer: "Material didático"},
+			{SurveyID: createdSurveys[0].ID, StudentID: createdStudents[4].ID, QuestionID: survey1Qs[3].ID, Answer: "O material disponibilizado é muito bom. As aulas poderiam ser um pouco mais dinâmicas."},
+		}
+		for _, r := range rafaelSurvey1Responses {
+			db.Create(&r)
+		}
 	}
 
-	for _, response := range sampleResponses {
-		db.Create(&response)
+	// =========================================================================
+	// Responses for Survey 2: POO (createdSurveys[1])
+	// Enrolled students: Pedro (0), Julia (1), Carla (3)
+	// =========================================================================
+
+	if len(survey2Qs) >= 4 {
+		// Pedro's responses to POO
+		pedroSurvey2Responses := []Response{
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[0].ID, QuestionID: survey2Qs[0].ID, Answer: "3"},      // Rating difficulty
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[0].ID, QuestionID: survey2Qs[1].ID, Answer: "Java"},   // Language preference
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[0].ID, QuestionID: survey2Qs[2].ID, Answer: "8"},      // NPS
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[0].ID, QuestionID: survey2Qs[3].ID, Answer: "Herança múltipla e interfaces foram os tópicos mais desafiadores, mas o professor explicou muito bem."},
+		}
+		for _, r := range pedroSurvey2Responses {
+			db.Create(&r)
+		}
+
+		// Julia's responses to POO
+		juliaSurvey2Responses := []Response{
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[1].ID, QuestionID: survey2Qs[0].ID, Answer: "4"},
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[1].ID, QuestionID: survey2Qs[1].ID, Answer: "Python"},
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[1].ID, QuestionID: survey2Qs[2].ID, Answer: "9"},
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[1].ID, QuestionID: survey2Qs[3].ID, Answer: "Polimorfismo foi difícil no início, mas os exercícios ajudaram muito a entender."},
+		}
+		for _, r := range juliaSurvey2Responses {
+			db.Create(&r)
+		}
+
+		// Carla's responses to POO
+		carlaSurvey2Responses := []Response{
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[3].ID, QuestionID: survey2Qs[0].ID, Answer: "2"},
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[3].ID, QuestionID: survey2Qs[1].ID, Answer: "C++"},
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[3].ID, QuestionID: survey2Qs[2].ID, Answer: "10"},
+			{SurveyID: createdSurveys[1].ID, StudentID: createdStudents[3].ID, QuestionID: survey2Qs[3].ID, Answer: "Já tinha experiência prévia, então achei a disciplina tranquila. Muito boa didática!"},
+		}
+		for _, r := range carlaSurvey2Responses {
+			db.Create(&r)
+		}
 	}
+
+	// =========================================================================
+	// Responses for Survey 3: Banco de Dados (createdSurveys[2])
+	// Enrolled students: Pedro (0), Lucas (2), Rafael (4)
+	// =========================================================================
+
+	if len(survey3Qs) >= 3 {
+		// Pedro's responses to Banco de Dados
+		pedroSurvey3Responses := []Response{
+			{SurveyID: createdSurveys[2].ID, StudentID: createdStudents[0].ID, QuestionID: survey3Qs[0].ID, Answer: "SQL"},
+			{SurveyID: createdSurveys[2].ID, StudentID: createdStudents[0].ID, QuestionID: survey3Qs[1].ID, Answer: "5"},
+			{SurveyID: createdSurveys[2].ID, StudentID: createdStudents[0].ID, QuestionID: survey3Qs[2].ID, Answer: "Ótima disciplina! Os laboratórios práticos com PostgreSQL foram muito úteis para fixar o conteúdo."},
+		}
+		for _, r := range pedroSurvey3Responses {
+			db.Create(&r)
+		}
+
+		// Lucas's responses to Banco de Dados
+		lucasSurvey3Responses := []Response{
+			{SurveyID: createdSurveys[2].ID, StudentID: createdStudents[2].ID, QuestionID: survey3Qs[0].ID, Answer: "Modelagem ER"},
+			{SurveyID: createdSurveys[2].ID, StudentID: createdStudents[2].ID, QuestionID: survey3Qs[1].ID, Answer: "4"},
+			{SurveyID: createdSurveys[2].ID, StudentID: createdStudents[2].ID, QuestionID: survey3Qs[2].ID, Answer: "A parte de modelagem foi muito bem explicada. Gostaria de ver mais conteúdo sobre NoSQL."},
+		}
+		for _, r := range lucasSurvey3Responses {
+			db.Create(&r)
+		}
+
+		// Rafael's responses to Banco de Dados (partial - only answered 2 questions)
+		rafaelSurvey3Responses := []Response{
+			{SurveyID: createdSurveys[2].ID, StudentID: createdStudents[4].ID, QuestionID: survey3Qs[0].ID, Answer: "Transações"},
+			{SurveyID: createdSurveys[2].ID, StudentID: createdStudents[4].ID, QuestionID: survey3Qs[1].ID, Answer: "3"},
+		}
+		for _, r := range rafaelSurvey3Responses {
+			db.Create(&r)
+		}
+	}
+
+	// Count total responses created
+	var responseCount int64
+	db.Model(&Response{}).Count(&responseCount)
 
 	log.Println("✅ Database seeding completed successfully!")
 	log.Println("📊 Created:")
@@ -488,10 +599,10 @@ func seedDatabase(db *gorm.DB) {
 	log.Println("   - 16 Student enrollments")
 	log.Println("   - 5 Surveys (4 active, 1 inactive)")
 	log.Println("   - 13 Questions")
-	log.Println("   - 3 Sample responses")
+	log.Printf("   - %d Sample responses", responseCount)
 	log.Println("")
 	log.Println("🔑 Test credentials:")
-	log.Println("   Admin: admin@univasf.edu.br / admin123")
-	log.Println("   Professor: maria.silva@univasf.edu.br / prof123")
-	log.Println("   Student: pedro.oliveira@discente.univasf.edu.br / student123")
+	log.Println("   Admin: admin@usp.br / admin123")
+	log.Println("   Professor: maria.silva@usp.br / prof123")
+	log.Println("   Student: pedro.oliveira@usp.br / student123")
 }

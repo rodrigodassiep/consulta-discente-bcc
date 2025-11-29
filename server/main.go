@@ -307,7 +307,11 @@ func main() {
 	}
 
 	// Seed database with sample data (comment out after first run if you want to keep data)
-	// seedDatabase(db)
+	// Seed database if SEED_DB environment variable is set to "true"
+	if os.Getenv("SEED_DB") == "true" {
+		log.Println("🌱 SEED_DB=true detected, seeding database...")
+		seedDatabase(db)
+	}
 
 	r := gin.Default()
 
@@ -616,6 +620,12 @@ func main() {
 			}
 
 			c.JSON(http.StatusOK, gin.H{"user": user})
+		})
+
+		// Seed database endpoint (admin only)
+		adminGroup.POST("/seed", func(c *gin.Context) {
+			seedDatabase(db)
+			c.JSON(http.StatusOK, gin.H{"message": "Database seeded successfully"})
 		})
 	}
 
