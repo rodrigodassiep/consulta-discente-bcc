@@ -1,8 +1,15 @@
 <script lang="ts">
 	import '../app.css';
+	import { pwaInfo } from 'virtual:pwa-info';
 
 	let { children } = $props();
 </script>
+
+<svelte:head>
+	{#if pwaInfo}
+		<link rel="manifest" href={pwaInfo.webManifest.href} />
+	{/if}
+</svelte:head>
 
 <div class="app">
 	<main>
