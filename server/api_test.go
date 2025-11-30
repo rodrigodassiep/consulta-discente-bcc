@@ -425,3 +425,85 @@ func TestLegacyConsultaEndpoint(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "deprecated")
 	assert.Contains(t, w.Body.String(), "survey system")
 }
+
+func TestAnonymousResponse(t *testing.T) {
+	t.Run("ToAnonymous removes student identity", func(t *testing.T) {
+		response := Response{
+			ID:        1,
+			SurveyID:  1,
+			StudentID: 42,
+			Student: User{
+				ID:        42,
+				FirstName: "John",
+				LastName:  "Doe",
+				Email:     "john.doe@test.com",
+				Role:      RoleStudent,
+			},
+			QuestionID: 1,
+			Question: Question{
+				ID:   1,
+				Text: "Test question",
+				Type: QuestionTypeFreeText,
+			},
+			Answer:      "Test answer",
+			SubmittedAt: time.Now(),
+		}
+
+		anonymous := response.ToAnonymous()
+
+		// Verify that non-sensitive data is preserved
+		assert.Equal(t, response.ID, anonymous.ID)
+		assert.Equal(t, response.SurveyID, anonymous.SurveyID)
+		assert.Equal(t, response.QuestionID, anonymous.QuestionID)
+		assert.Equal(t, response.Answer, anonymous.Answer)
+		assert.Equal(t, response.SubmittedAt, anonymous.SubmittedAt)
+		assert.Equal(t, response.Question.Text, anonymous.Question.Text)
+	})
+
+	t.Run("ToAnonymousList converts multiple responses", func(t *testing.T) {
+		responses := []Response{
+			{
+				ID:        1,
+				SurveyID:  1,
+				StudentID: 42,
+				Student:   User{ID: 42, FirstName: "John"},
+				Answer:    "Answer 1",
+			},
+			{
+				ID:        2,
+				SurveyID:  1,
+				StudentID: 43,
+				Student:   User{ID: 43, FirstName: "Jane"},
+				Answer:    "Answer 2",
+			},
+		}
+
+		anonymousList := ToAnonymousList(responses)
+
+		assert.Len(t, anonymousList, 2)
+		assert.Equal(t, responses[0].ID, anonymousList[0].ID)
+		assert.Equal(t, responses[0].Answer, anonymousList[0].Answer)
+		assert.Equal(t, responses[1].ID, anonymousList[1].ID)
+		assert.Equal(t, responses[1].Answer, anonymousList[1].Answer)
+	})
+
+	t.Run("AnonymousResponse JSON excludes student fields", func(t *testing.T) {
+		anonymous := AnonymousResponse{
+			ID:         1,
+			SurveyID:   1,
+			QuestionID: 1,
+			Answer:     "Test answer",
+		}
+
+		jsonBytes, err := json.Marshal(anonymous)
+		assert.NoError(t, err)
+
+		jsonStr := string(jsonBytes)
+		// Verify student-related fields are not in JSON
+		assert.NotContains(t, jsonStr, "student_id")
+		assert.NotContains(t, jsonStr, "student")
+		// Verify expected fields are present
+		assert.Contains(t, jsonStr, "\"id\":1")
+		assert.Contains(t, jsonStr, "\"answer\":\"Test answer\"")
+	})
+}

@@ -188,6 +188,39 @@ type Response struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// AnonymousResponse is a DTO that excludes student identity for privacy
+type AnonymousResponse struct {
+	ID          uint      `json:"id"`
+	SurveyID    uint      `json:"survey_id"`
+	Survey      Survey    `json:"survey,omitempty"`
+	QuestionID  uint      `json:"question_id"`
+	Question    Question  `json:"question,omitempty"`
+	Answer      string    `json:"answer"`
+	SubmittedAt time.Time `json:"submitted_at"`
+}
+
+// ToAnonymous converts a Response to an AnonymousResponse (removes student identity)
+func (r *Response) ToAnonymous() AnonymousResponse {
+	return AnonymousResponse{
+		ID:          r.ID,
+		SurveyID:    r.SurveyID,
+		Survey:      r.Survey,
+		QuestionID:  r.QuestionID,
+		Question:    r.Question,
+		Answer:      r.Answer,
+		SubmittedAt: r.SubmittedAt,
+	}
+}
+
+// ToAnonymousList converts a slice of Responses to AnonymousResponses
+func ToAnonymousList(responses []Response) []AnonymousResponse {
+	anonymous := make([]AnonymousResponse, len(responses))
+	for i, r := range responses {
+		anonymous[i] = r.ToAnonymous()
+	}
+	return anonymous
+}
+
 // Global database variable
 var db *gorm.DB
 
@@ -561,11 +594,12 @@ func main() {
 		// View All Responses
 		adminGroup.GET("/responses", func(c *gin.Context) {
 			var responses []Response
-			if err := db.Preload("Survey").Preload("Student").Preload("Question").Find(&responses).Error; err != nil {
+			if err := db.Preload("Survey").Preload("Question").Find(&responses).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch responses"})
 				return
 			}
-			c.JSON(http.StatusOK, gin.H{"responses": responses})
+			// Return anonymous responses (without student identity)
+			c.JSON(http.StatusOK, gin.H{"responses": ToAnonymousList(responses)})
 		})
 
 		// Get all users
@@ -805,14 +839,15 @@ func main() {
 			user := currentUser.(User)
 
 			var responses []Response
-			if err := db.Preload("Survey").Preload("Student").Preload("Question").
+			if err := db.Preload("Survey").Preload("Question").
 				Joins("JOIN surveys ON responses.survey_id = surveys.id").
 				Where("surveys.professor_id = ?", user.ID).
 				Find(&responses).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch responses"})
 				return
 			}
-			c.JSON(http.StatusOK, gin.H{"responses": responses})
+			// Return anonymous responses (without student identity)
+			c.JSON(http.StatusOK, gin.H{"responses": ToAnonymousList(responses)})
 		})
 
 		// Get responses for specific survey
@@ -829,11 +864,12 @@ func main() {
 			}
 
 			var responses []Response
-			if err := db.Preload("Student").Preload("Question").Where("survey_id = ?", surveyID).Find(&responses).Error; err != nil {
+			if err := db.Preload("Question").Where("survey_id = ?", surveyID).Find(&responses).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch responses"})
 				return
 			}
-			c.JSON(http.StatusOK, gin.H{"responses": responses})
+			// Return anonymous responses (without student identity)
+			c.JSON(http.StatusOK, gin.H{"responses": ToAnonymousList(responses)})
 		})
 	}
 
